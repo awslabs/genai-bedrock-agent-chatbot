@@ -1,0 +1,80 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "EC2 Instance Specifications Questions API",
+        "version": "1.0.0",
+        "description": "Demo APIs for answering questions about EC2 Instance metrics such as pricing and memory."
+    },
+    "paths": {
+        "/uc2": {
+            "get": {
+                "summary": "Get answers to quantitative questions, or a quantitative part of a question, such as about pricing, memory number of cpus. For qualitative questions and instructions, use knowledgebase instead.",
+                "description": "Converts the question into a SQL query and queries tables to return the latest information about pricing for inference, training instances.",
+                "operationId": "getUc2Response",
+                "parameters": [
+                    {
+                        "name": "uc2Question",
+                        "in": "path",
+                        "description": "Quantitative question",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response to the user query based on the data queried from a SQL table with details about EC2 instances.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "uc2Question": {
+                                            "type": "string",
+                                            "description": "The question asked by the user."
+                                        },
+                                        "uc2Response": {
+                                            "type": "string",
+                                            "description": "The response to the user question."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - The request could not be understood or was missing required parameters."
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication failed or user does not have permissions for the requested operation."
+                    },
+                    "403": {
+                        "description": "Forbidden - Access denied."
+                    },
+                    "500": {
+                        "description": "Internal Server Error - An unexpected error occurred."
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {},
+        "requestBodies": {},
+        "securitySchemes": {
+            "ApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-KEY"
+            }
+        },
+        "links": {},
+        "callbacks": {}
+    },
+    "security": [
+        {
+            "ApiKeyAuth": []
+        }
+    ]
+}
