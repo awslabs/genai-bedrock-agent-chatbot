@@ -1,0 +1,3 @@
+example_input_question,example_output_query
+Which instance has the most memory?,"SELECT instance_name, instance_memory, instance_memory_unit FROM ec2_pricing ORDER BY instance_memory DESC LIMIT 5;"
+Which instance has the most cpus?,"SELECT instance_name, number_vcpus FROM ec2_pricing  ORDER BY number_vcpus DESC LIMIT 5;"
