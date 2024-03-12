@@ -9,7 +9,7 @@ The Lambda hanlder needs to have a schema in order to execute the function call 
 
 Here is the API achema for this lambda:
 
-- [artifacts_schema](assets/agent_api_schema/artifacts_schema.json)
+- [artifacts_schema](../../../assets/agent_api_schema/artifacts_schema.json)
 ## Component Details
 #### Prerequisites (requirements.txt)
 - boto3==1.34.37

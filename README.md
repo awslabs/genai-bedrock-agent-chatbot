@@ -33,16 +33,13 @@ This demo ChatBot application is developed using Amazon Bedrock including Knowle
  * Elastic Load Balancer
 
 ## Deployment
-To run locally, first add a .env file to 'code/ecs-app/streamlit-app' folder containing the following
+To run the app locally, first add a .env file to 'code/streamlit-app' folder containing the following
 
 ```.env
 ACCOUNT_ID = <Your account ID>
 AWS_REGION = <Your region>
 LAMBDA_FUNCTION_NAME =  invokeAgentLambda # Sets name of choice for the lambda function called by streamlit for a response. Currently invokes an agent. 
 ```
-Currenly, the code is working on us-east-2. 
-
-This is a blank project for CDK development with Python.
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
