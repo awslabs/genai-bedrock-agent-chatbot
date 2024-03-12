@@ -29,10 +29,10 @@ This Lambda is triggered after the stack is deployed, it is to conduct the follo
 | [create_agent_alias.py](create_agent_alias.py)             | Python file that creates Amazon Bedrock Agent Alias after it's prepared database                                                                                                                                                                                                                         |
 | [prepare_agent.py](prepare_agent.py)                       | Python file that prepares Amazon Bedrock Agent after it's deployed via AWS CDK.                                                                                                                                                                                                                          |
 | [trigger_data_source_sync.py](trigger_data_source_sync.py) | Python file that triggers the data source sync between Amazon Bedrock Knowledge base and Amazon Opensearch Serverless vector index                                                                                                                                                                       |
-| [trigger_glue_crawler.py](trigger_glue_crawler.py)         | Python file that trigger AWS Glue crawler after it is deployed                                                                                                                                                                                                                                           |     |
+| [trigger_glue_crawler.py](trigger_glue_crawler.py)         | Python file that trigger AWS Glue crawler after it is deployed                                                                                                                                                                                                                                           |
 | [update_agent_prompts.py](update_agent_prompts.py)         | Python file that updates agent prompts using the templates from `agent_prompts.py` file                                                                                                                                                                                                                  |
 | [lambda_handler.py](lambda_handler.py)                     | Python file that contains lambda handler to trigger the actions listed above                                                                                                                                                                                                                             |
-| [cfnresponse.py](cfnresponse.py)                             | Python file that is designed for use within AWS Lambda functions that are part of AWS CloudFormation custom resources. The script includes a function named send that constructs and sends a response back to a CloudFormation stack to indicate the success or failure of the Lambda function execution |
+| [cfnresponse.py](cfnresponse.py)                           | Python file that is designed for use within AWS Lambda functions that are part of AWS CloudFormation custom resources. The script includes a function named send that constructs and sends a response back to a CloudFormation stack to indicate the success or failure of the Lambda function execution |
 | [connections.py](connections.py)                           | Python file with `Connections` class for establishing connections with external dependencies of the lambda                                                                                                                                                                                               |
 
 #### Input
@@ -68,7 +68,7 @@ This lambda generates the following output
 
 | Field        | Description                                          | Data Type |
 | ------------ | ---------------------------------------------------- | --------- |
-| `statusCode` | `200` indicates success; `500` indicates failure      | Number    |
+| `statusCode` | `200` indicates success; `500` indicates failure     | Number    |
 | `body`       | Denotes the message associated with `the statusCode` | String    |
 
 #### Environmental Variables

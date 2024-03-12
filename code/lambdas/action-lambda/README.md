@@ -38,7 +38,7 @@ Here is the API schema for this lambda:
 | [build_query_engine.py](build_query_engine.py) | Python file build query engine that translate natural language to SQL, and execute against the connected database |
 | [index.py](index.py)                           | Python file containing the `lambda_handler` function that acts as the starting point for Amazon Lambda invocation |
 | [prompt_templates.py](prompt_templates.py)     | Python variables with input Prompts for the LLM to operate                                                        |
-| [dynamic_examples.csv](dynamic_examples.csv)   | CSV file contains 'natural language t SQL' example pairs. invocation                                              |     |
+| [dynamic_examples.csv](dynamic_examples.csv)   | CSV file contains 'natural language t SQL' example pairs. invocation                                              |
 | [Dockerfile](Dockerfile)                       | Dockerfile to build image for Amazon Lambda deployment service                                                    |
 | [requirements.txt](requirements.txt)           | requirements.txt file used to build the docker image                                                              |
 
@@ -86,13 +86,13 @@ This lambda generates the following output
 }
 ```
 
-| Field            | Description                                                                                                                                                      | Data Type  |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `actionGroup`    | Action group associate with the Amazon Bedrock Agent                                                                                                             | String     |
-| `apiPath`        | Denotes the path of the API call                                                                                                                                 | String     |
-| `httpMethod`     | A HTTP method defined in the lambda handler                                                                                                                      | String     |
-| `httpStatusCode` | A HTTP status code that denotes the output status of validation. A `200` value means validation completed successfully                                           | Number     |
-| `responseBody`   | Contains `answer` and `source` for the answer that returned from Amazon Bedrock Agent | Dictionary |
+| Field            | Description                                                                                                            | Data Type  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `actionGroup`    | Action group associate with the Amazon Bedrock Agent                                                                   | String     |
+| `apiPath`        | Denotes the path of the API call                                                                                       | String     |
+| `httpMethod`     | A HTTP method defined in the lambda handler                                                                            | String     |
+| `httpStatusCode` | A HTTP status code that denotes the output status of validation. A `200` value means validation completed successfully | Number     |
+| `responseBody`   | Contains `answer` and `source` for the answer that returned from Amazon Bedrock Agent                                  | Dictionary |
 
 Here is the the structure of the `responseBody`:
 

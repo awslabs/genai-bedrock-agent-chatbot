@@ -18,9 +18,9 @@ This collection serves as the 'Data Source' for Amazon Bedrock Knowledge base.
 
 #### Package Details
 
-| Files                          | Description                                                                                                                                                                                                                                                                                              |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [index.py](index.py)           | Python file containing the `lambda_handler` function that acts as the starting point for Amazon Lambda invocation                                                                                                                                                                                        |
+| Files                            | Description                                                                                                                                                                                                                                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [index.py](index.py)             | Python file containing the `lambda_handler` function that acts as the starting point for Amazon Lambda invocation                                                                                                                                                                                        |
 | [cfnresponse.py](cfnresponse.py) | Python file that is designed for use within AWS Lambda functions that are part of AWS CloudFormation custom resources. The script includes a function named send that constructs and sends a response back to a CloudFormation stack to indicate the success or failure of the Lambda function execution |
 
 #### Input
