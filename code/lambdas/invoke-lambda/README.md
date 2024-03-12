@@ -2,26 +2,29 @@
 
 ## Introduction
 
-This lambda is to invoke the Bedrock Agent, to respond to user's query from the Frondend (streamlit UI).
+This lambda is to invoke the Bedrock Agent, to respond to user's query from the Front-end (streamlit UI).
 
 ## Component Details
+
 #### Prerequisites
+
 - Run the 'update-lambda' successfully.
-    - Trigger AWS Glue Crawler to create the AWS Glue database succuessfully
-    - Data Source Sync between Amazon Bedrock Knowledge base and Opensearch serverless vector index
-    - Associate the Knowledgebase with the Bedrock Agent
-    - Prepare Amazon Bedrock Agent
-    - Create Alias for Amazon Bedrock Agent
+  - Trigger AWS Glue Crawler to create the AWS Glue database successfully
+  - Data Source Sync between Amazon Bedrock Knowledge base and Opensearch serverless vector index
+  - Associate the Knowledge base with the Bedrock Agent
+  - Prepare Amazon Bedrock Agent
+  - Create Alias for Amazon Bedrock Agent
 
 #### Technology stack
+
 - [AWS Lambda](https://aws.amazon.com/lambda/)
 - [Amazon Bedrock](https://aws.amazon.com/bedrock/)
 
 #### Package Details
 
-| Files                                                                    | Description                                                                                                                                                                                                                          |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [index.py](index.py)                                         | Python file  containing the `lambda_handler` function that acts as the starting point for Amazon Lambda invocation                                                                                                                           |
+| Files                | Description                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [index.py](index.py) | Python file containing the `lambda_handler` function that acts as the starting point for Amazon Lambda invocation |
 
 #### Input
 
@@ -29,14 +32,14 @@ The Amazon Lambda is part of the Action Group associated the Amazon Bedrock Agen
 
 ```json
 {
-    "query": "user query from the frontend",
-    "session_id": "session id that governs chat sessions"
+  "query": "user query from the frontend",
+  "session_id": "session id that governs chat sessions"
 }
 ```
 
 #### Output
 
-This lambda generats the following output
+This lambda generates the following output
 
 ```json
 {
@@ -47,7 +50,7 @@ This lambda generats the following output
 
 #### Environmental Variables
 
-| Field                          | Description                                                                              | Data Type |
-| ------------------------------ | ---------------------------------------------------------------------------------------- | --------- |
-| `AGENT_ID`         | Set the Amazon Bedrock Agent id                                   | String    |
-| `REGION_NAME` | Sets the AWS region                            | String    |
+| Field         | Description                     | Data Type |
+| ------------- | ------------------------------- | --------- |
+| `AGENT_ID`    | Set the Amazon Bedrock Agent id | String    |
+| `REGION_NAME` | Sets the AWS region             | String    |

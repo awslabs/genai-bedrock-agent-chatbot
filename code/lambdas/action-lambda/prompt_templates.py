@@ -1,6 +1,6 @@
 # Tables used by Agent for text to SQL
 table_details = {
-    "ec2_pricing": "Informatione about EC2 instance pricing and other details.",
+    "ec2_pricing": "Information about EC2 instance pricing and other details.",
 }
 
 # prompts for pricing details retrieval
