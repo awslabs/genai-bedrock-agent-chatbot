@@ -92,7 +92,7 @@ This lambda generates the following output
 | `apiPath`        | Denotes the path of the API call                                                                                                                                 | String     |
 | `httpMethod`     | A HTTP method defined in the lambda handler                                                                                                                      | String     |
 | `httpStatusCode` | A HTTP status code that denotes the output status of validation. A `200` value means validation completed successfully                                           | Number     |
-| `responseBody`   | List of answer IDs that are determined to be off-topic when compared to the question asked. A string literal of '-1' means there is no answers that are off-topic. | Dictionary |
+| `responseBody`   | Contains `answer` and `source` for the answer that returned from Amazon Bedrock Agent | Dictionary |
 
 Here is the the structure of the `responseBody`:
 
