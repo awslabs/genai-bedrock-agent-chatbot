@@ -33,12 +33,12 @@ Here is the API schema for this lambda:
 #### Package Details
 
 | Files                                          | Description                                                                                                       |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | 
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | [connections.py](connections.py)               | Python file with `Connections` class for establishing connections with external dependencies of the lambda        |
-| [build_query_engine.py](build_query_engine.py) | Python file build query engine that translate natural language to SQL, and execute against the connected database  |
+| [build_query_engine.py](build_query_engine.py) | Python file build query engine that translate natural language to SQL, and execute against the connected database |
 | [index.py](index.py)                           | Python file containing the `lambda_handler` function that acts as the starting point for Amazon Lambda invocation |
-| [prompt_templates.py](prompt_templates.py)           | Python variables with input Prompts for the LLM to operate                                                        |
-| [dynamic_examples.csv](dynamic_examples.csv)   | CSV file contains 'natural language t SQL' example pairs. invocation                                               |     |
+| [prompt_templates.py](prompt_templates.py)     | Python variables with input Prompts for the LLM to operate                                                        |
+| [dynamic_examples.csv](dynamic_examples.csv)   | CSV file contains 'natural language t SQL' example pairs. invocation                                              |     |
 | [Dockerfile](Dockerfile)                       | Dockerfile to build image for Amazon Lambda deployment service                                                    |
 | [requirements.txt](requirements.txt)           | requirements.txt file used to build the docker image                                                              |
 
@@ -74,7 +74,7 @@ The Amazon Lambda is part of the Action Group associated the Amazon Bedrock Agen
 
 #### Output
 
-This lambda generats the following output
+This lambda generates the following output
 
 ```json
 {
@@ -92,7 +92,7 @@ This lambda generats the following output
 | `apiPath`        | Denotes the path of the API call                                                                                                                                 | String     |
 | `httpMethod`     | A HTTP method defined in the lambda handler                                                                                                                      | String     |
 | `httpStatusCode` | A HTTP status code that denotes the output status of validation. A `200` value means validation completed successfully                                           | Number     |
-| `responseBody`   | List of answer IDs that are determined to be off-topic when comared to the quesiton asked. A string lteral of '-1' means there is no answers that are off-topic. | Dictionary |
+| `responseBody`   | List of answer IDs that are determined to be off-topic when compared to the question asked. A string literal of '-1' means there is no answers that are off-topic. | Dictionary |
 
 Here is the the structure of the `responseBody`:
 
