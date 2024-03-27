@@ -20,7 +20,7 @@ This GenAI ChatBot application was built with Amazon Bedrock, which includes Kno
 - AWS CDK Toolkit 2.114.1+, installed installed and configured. For more information, see Getting started with the AWS CDK in the AWS CDK documentation.
 - Python 3.11+, installed and configured. For more information, see Beginners Guide/Download in the Python documentation.
 - An active AWS account
-- An AWS account bootstrapped by using AWS CDK in us-east-1 or us-west-2. Enable Claude model access in Bedrock service.
+- An AWS account bootstrapped by using AWS CDK in us-east-1 or us-west-2. Enable Claude model and Titan Embedding model access in Bedrock service.
 
 ## Target technology stack
 
