@@ -91,9 +91,9 @@ def lambda_handler(event, context):
                             "dimension": 1536,
                             "method": {  # 'method' contains settings for the algorithm used for k-NN calculations. Default method is l2(stands for Euclidean distance). You can also use cosine similarity.
                                 # Space in which distance calculations will be done. "l2" stands for L2 space (Euclidean distance)
-                                "space_type": "cosinesimil",
+                                "space_type": "innerproduct",
                                 # Underlying engine to perform the vector calculations. FAISS is a library for efficient similarity search and clustering of dense vectors. The alternative is "nmslib".
-                                "engine": "nmslib",
+                                "engine": "FAISS",
                                 # This specifies the exact algorithm FAISS will use for k-NN calculations. HNSW stands for Hierarchical Navigable Small World, which is efficient for similarity searches.
                                 "name": "hnsw",
                                 "parameters": {
