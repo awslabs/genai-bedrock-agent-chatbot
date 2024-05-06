@@ -108,7 +108,11 @@ def get_agent_response(response):
     if sql_query_from_llm:
         source_file_list = sql_query_from_llm
     else:
-        source_file_list = extract_source_list_from_kb(trace_list)
+        try:
+            source_file_list = extract_source_list_from_kb(trace_list)
+        except Exception as e:
+            log(f"Error extracting source list from KB: {e}")
+            source_file_list = ""
     return chunk_text, source_file_list
 
 
