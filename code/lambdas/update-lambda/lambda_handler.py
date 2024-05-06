@@ -2,7 +2,6 @@ from trigger_glue_crawler import trigger_glue_crawler
 from trigger_data_source_sync import trigger_data_source_sync
 from prepare_agent import prepare_bedrock_agent
 from create_agent_alias import create_bedrock_agent_alias
-from update_agent_prompts import update_agent_prompts
 from connections import Connections
 import cfnresponse
 
@@ -44,8 +43,7 @@ def lambda_handler(event, context):
 
             # Trigger Data Source Sync
             logger.info("Starting Data Source Sync.")
-            trigger_data_source_sync(
-                bedrock_agent, knowledgebase_id, data_source_id)
+            trigger_data_source_sync(bedrock_agent, knowledgebase_id, data_source_id)
             logger.info("Data Source Sync triggered successfully.")
 
             # Preapre Bedrock Agent
@@ -55,16 +53,9 @@ def lambda_handler(event, context):
 
             # Create Agent Alias
             logger.info("Creating Agent Alias.")
-            create_bedrock_agent_alias(
-                bedrock_agent, agent_id, agent_alias_name)
+            create_bedrock_agent_alias(bedrock_agent, agent_id, agent_alias_name)
             logger.info("Agent Alias created successfully.")
 
-            if update_agent:  # Update Agent Prompts (optional)
-                logger.info("Updating Agent Prompts.")
-                update_agent_prompts(
-                    bedrock_agent, agent_id, agent_name, agent_resource_role_arn
-                )
-                logger.info("Agent Prompts updated successfully.")
         elif event["RequestType"] == "Delete":
 
             response = bedrock_agent.list_agent_aliases(agentId=agent_id)
@@ -79,7 +70,8 @@ def lambda_handler(event, context):
                 )
 
             response = bedrock_agent.delete_agent(
-                agentId=agent_id, skipResourceInUseCheck=False)
+                agentId=agent_id, skipResourceInUseCheck=False
+            )
             logger.info(f"Deleted agent id: {agent_id}.")
         else:
             logger.info("Continuing without action.")
