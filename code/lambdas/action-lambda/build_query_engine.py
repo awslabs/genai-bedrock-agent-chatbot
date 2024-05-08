@@ -101,7 +101,7 @@ def few_shot_examples_fn(**kwargs):
         result_str = "\n".join(example)
         result_strs.append(result_str)
 
-    example_set = "\n\n".join(result_strs).replace("<database>", "askrexy_db")
+    example_set = "\n\n".join(result_strs)
     logger.info("Example set provided:")
     logger.info(example_set)
     return example_set
