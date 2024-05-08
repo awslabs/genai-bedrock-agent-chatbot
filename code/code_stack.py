@@ -730,7 +730,7 @@ class CodeStack(Stack):
             knowledge_base_id=knowledge_base.attr_knowledge_base_id,
             name="BedrockKnowledgeBaseSource",
             # the properties below are optional
-            data_deletion_policy="DELETE",
+            data_deletion_policy="RETAIN",
             description="description",
         )
 
