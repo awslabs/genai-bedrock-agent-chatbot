@@ -20,7 +20,6 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-
 def create_sql_engine():
     """
     Connects to Amazon Athena.
@@ -39,7 +38,6 @@ def create_sql_engine():
     # Create an SQLAlchemy engine
     engine = create_engine(conn_url)
     return engine
-
 
 
 def get_few_shot_retriever(FEWSHOT_EXAMPLES_PATH):
@@ -80,7 +78,6 @@ def get_few_shot_retriever(FEWSHOT_EXAMPLES_PATH):
     return few_shot_retriever, data_dict
 
 
-
 def few_shot_examples_fn(**kwargs):
     """
     Retrieves fewshot examples.
@@ -104,9 +101,10 @@ def few_shot_examples_fn(**kwargs):
         result_str = "\n".join(example)
         result_strs.append(result_str)
 
-    example_set = "\n\n".join(result_strs).replace("<database>", "askrexy_db")
+    example_set = "\n\n".join(result_strs)
     logger.info("Example set provided:")
     logger.info(example_set)
+    return example_set
 
 
 few_shot_retriever, data_dict = get_few_shot_retriever(
@@ -121,7 +119,6 @@ SQL_PROMPT = PromptTemplate(
 )
 
 RESPONSE_PROMPT = Prompt(RESPONSE_TEMPLATE_STR)
-
 
 
 def create_query_engine(
@@ -150,16 +147,14 @@ def create_query_engine(
     llm = Connections.get_bedrock_llm(model_name=model_name, max_tokens=1024)
 
     # initialize service context
-    service_context = ServiceContext.from_defaults(
-        llm=llm, embed_model=embed_model)
+    service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
 
     table_node_mapping = SQLTableNodeMapping(sql_database)
     table_schema_objs = []
     tables = list(sql_database._all_tables)
     for table in tables:
         table_schema_objs.append(
-            (SQLTableSchema(table_name=table,
-             context_str=table_details[table]))
+            (SQLTableSchema(table_name=table, context_str=table_details[table]))
         )
 
     obj_index = ObjectIndex.from_objects(
