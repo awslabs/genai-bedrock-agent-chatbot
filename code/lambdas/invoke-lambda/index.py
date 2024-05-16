@@ -231,7 +231,11 @@ def lambda_handler(event, context):
     body = event["body"]
 
     streaming_response = invoke_agent(body["query"], body["session_id"])
-    response, _, source_file_list = get_agent_response(streaming_response)
+    res = get_agent_response(streaming_response)
+    log(f"res: {res}")
+
+    response, _, source_file_list = res
+
     log(f"response: {response}")
     log(f"source_file_list: {source_file_list}")
 

@@ -12,8 +12,7 @@ else:
     ACCOUNT_ID = os.environ["ACCOUNT_ID"]
     AWS_REGION = os.environ["AWS_REGION"]
 
-# BUCKET_NAME = os.environ["BUCKET_NAME"]
-BUCKET_NAME = 'os.environ["BUCKET_NAME"]'
+BUCKET_NAME = os.environ["BUCKET_NAME"]
 
 
 if os.environ.get("LAMBDA_FUNCTION_NAME") is None:

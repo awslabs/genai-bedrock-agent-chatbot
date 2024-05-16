@@ -17,6 +17,9 @@ SQL_TEMPLATE_STR = """Given an input question, first create a syntactically corr
     Only search for sku nunber if there is specific mention of a number starting with "sku_". If no specific sku_id is mentioned match it to one of these types to get some general information and data. If there is text in the image starting with "sku_" then you must call this out. 
     tool_types = ['Hammer', 'Screwdriver', 'Wrench', 'Drill', 'Saw', 'Pliers', 'Chisel', 'Level', 'Tape Measure', 'Utility Knife', 'Other']
 
+    Never filter on more than one tool type.
+    A valid sku must start with "sku_", only filter on sku if the question mentions a valid sku number.
+
 
     Question: {query_str}\nSQLQuery: """
 
