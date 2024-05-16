@@ -25,9 +25,9 @@
         "lambdas_source_folder": "code/lambdas",
         "layers_source_folder": "code/layers",
         "athena_data_destination_prefix": "data_query_data_source",
-        "athena_table_data_prefix": "ec2_pricing",
+        "athena_table_data_prefix": "hardware_pricing",
         "knowledgebase_destination_prefix": "knowledgebase_data_source",
-        "knowledgebase_file_name": "ec2_dg.zip",
+        "knowledgebase_file_name": "",
         "agent_schema_destination_prefix": "agent_api_schema",
         "fewshot_examples_path": "dynamic_examples.csv"
       },

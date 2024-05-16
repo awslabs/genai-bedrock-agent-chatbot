@@ -1,15 +1,15 @@
 {
     "openapi": "3.0.0",
     "info": {
-        "title": "EC2 Instance Specifications Questions API",
+        "title": "Bedrock Agents Questions API",
         "version": "1.0.0",
-        "description": "Demo APIs for answering questions about EC2 Instance metrics such as pricing and memory."
+        "description": "Demo APIs for answering questions hardware tools."
     },
     "paths": {
-        "/uc2": {
+        "/query_pricing": {
             "get": {
-                "summary": "Get answers to quantitative questions, or a quantitative part of a question, such as about pricing, memory number of cpus. For qualitative questions and instructions, use knowledgebase instead.",
-                "description": "Converts the question into a SQL query and queries tables to return the latest information about pricing for inference, training instances.",
+                "summary": "Get answers about pricing and popularity for different types of tools & hardware.",
+                "description": "Never make up or guess numbers or try to recall from memory. Use this tool to converts the question into a SQL query and queries tables to return the latest information about pricing and popularity of tools & hardware. If you have an image description this helps constucting the correct query. You must use this tool when trying to answer questions about pricing and popularity of tools & hardware.",
                 "operationId": "getUc2Response",
                 "parameters": [
                     {
@@ -24,7 +24,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "A response to the user query based on the data queried from a SQL table with details about EC2 instances.",
+                        "description": "A response to the user query based on the data queried from a SQL table with details pricing and popularity for hardware tools.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -34,7 +34,129 @@
                                             "type": "string",
                                             "description": "The question asked by the user."
                                         },
-                                        "uc2Response": {
+                                        "uc2Answer": {
+                                            "type": "string",
+                                            "description": "The response to the user question."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - The request could not be understood or was missing required parameters."
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication failed or user does not have permissions for the requested operation."
+                    },
+                    "403": {
+                        "description": "Forbidden - Access denied."
+                    },
+                    "500": {
+                        "description": "Internal Server Error - An unexpected error occurred."
+                    }
+                }
+            }
+        },
+        "/image_description": {
+            "get": {
+                "summary": "Get a description of an image provided by the user.",
+                "description": "If provided wit an image filename (ending in .jpg, .png, .jpeg) you can use this tool to extract helpful information. The returned description will help you look the right pricing data with getUc2Response",
+                "operationId": "getUc3Response",
+                "parameters": [
+                    {
+                        "name": "image_file_name",
+                        "in": "path",
+                        "description": "the name of the image file to be described.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response with a description of the image..",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "uc3Question": {
+                                            "type": "string",
+                                            "description": "The question asked by the user."
+                                        },
+                                        "uc3Response": {
+                                            "type": "string",
+                                            "description": "The response to the user question."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - The request could not be understood or was missing required parameters."
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication failed or user does not have permissions for the requested operation."
+                    },
+                    "403": {
+                        "description": "Forbidden - Access denied."
+                    },
+                    "500": {
+                        "description": "Internal Server Error - An unexpected error occurred."
+                    }
+                }
+            }
+        },
+        "/send_email": {
+            "get": {
+                "summary": "Send a picture via email",
+                "description": "Use this this to respond to requests to send images to emails.",
+                "operationId": "emailResponse",
+                "parameters": [
+                    {
+                        "name": "emailQuestion",
+                        "in": "path",
+                        "description": "Request to send email to an address",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "emailList",
+                        "in": "path",
+                        "description": "List of correctly formatted emails to send an email to Ex ['test1@gmail.com', 'test2@gmail.com']",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "imageFileName",
+                        "in": "path",
+                        "description": "Filename of image to include as an attachment in the email",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response confirming what email was sent.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "email2Question": {
+                                            "type": "string",
+                                            "description": "The question asked by the user."
+                                        },
+                                        "emailAnswer": {
                                             "type": "string",
                                             "description": "The response to the user question."
                                         }

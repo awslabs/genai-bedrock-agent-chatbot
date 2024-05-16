@@ -12,6 +12,10 @@ else:
     ACCOUNT_ID = os.environ["ACCOUNT_ID"]
     AWS_REGION = os.environ["AWS_REGION"]
 
+# BUCKET_NAME = os.environ["BUCKET_NAME"]
+BUCKET_NAME = 'os.environ["BUCKET_NAME"]'
+
+
 if os.environ.get("LAMBDA_FUNCTION_NAME") is None:
     try:
         # read in json file cdk.json
@@ -24,8 +28,7 @@ if os.environ.get("LAMBDA_FUNCTION_NAME") is None:
         ]
         lambda_function_name = f"{STACK_NAME}-{STREAMLIT_INVOKE_LAMBDA_FUNCTION_NAME}-{ACCOUNT_ID}-{AWS_REGION}"
     except Exception:
-        raise ValueError(
-            "LAMBDA_FUNCTION_NAME not found in environment or cdk.json.")
+        raise ValueError("LAMBDA_FUNCTION_NAME not found in environment or cdk.json.")
 else:
     lambda_function_name = os.environ["LAMBDA_FUNCTION_NAME"]
 
@@ -37,3 +40,6 @@ class Connections:
         region_name=AWS_REGION,
         config=Config(read_timeout=300, connect_timeout=300),
     )
+    BUCKET_NAME = BUCKET_NAME
+    AWS_REGION = AWS_REGION
+    s3_client = boto3.client("s3", region_name=AWS_REGION)

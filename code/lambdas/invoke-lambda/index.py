@@ -19,8 +19,7 @@ REGION_NAME = os.environ["REGION_NAME"]
 log(f"Agent id: {AGENT_ID}")
 
 agent_client = boto3.client("bedrock-agent", region_name=REGION_NAME)
-agent_runtime_client = boto3.client(
-    "bedrock-agent-runtime", region_name=REGION_NAME)
+agent_runtime_client = boto3.client("bedrock-agent-runtime", region_name=REGION_NAME)
 s3_resource = boto3.resource("s3", region_name=REGION_NAME)
 
 
@@ -154,20 +153,35 @@ def source_link(input_source_list):
     - str: A string representing a markdown-formatted numbered list of document titles linked to their source URLs.
     """
     source_dict_list = []
+
     for i, input_source in enumerate(input_source_list):
+
+        default_title = input_source
+        default_link = input_source
+
+        log(f"{i} input_source: {input_source}")
         string = input_source.split("//")[1]
         bucket = string.partition("/")[0]
         obj = string.partition("/")[2]
         file = s3_resource.Object(bucket, obj)
         body = file.get()["Body"].read()
-        res = json.loads(body)
-        source_link_url = res["Url"]
-        source_title = res["Topic"]
-        source_dict = (source_title, source_link_url)
-        source_dict_list.append(source_dict)
+        try:
+            print(f"Decoding body: {body}")
+            res = json.loads(body)
+            source_link_url = res.get("Url", "No URL provided")
+            source_title = res.get("Topic", "No Title provided")
+            source_dict = (source_title, source_link_url)
+            source_dict_list.append(source_dict)
+        # except and print error all errors
+        except Exception as e:
+            log(f"Error decoding JSON: {e}")
+            # Handle case where the body is not a valid JSON
+            source_dict = (default_title, default_link)
+            source_dict_list.append(source_dict)
 
-    # get the unique sources
+    # Get the unique sources
     unique_sources = list(OrderedDict.fromkeys(source_dict_list))
+    log(f"unique_sources: {unique_sources}")
 
     refs_str = ""
     for i, (title, link) in enumerate(unique_sources, start=1):
@@ -218,11 +232,15 @@ def lambda_handler(event, context):
 
     streaming_response = invoke_agent(body["query"], body["session_id"])
     response, _, source_file_list = get_agent_response(streaming_response)
+    log(f"response: {response}")
+    log(f"source_file_list: {source_file_list}")
+
     if isinstance(source_file_list, list):
+        print(f"source_file_list {source_file_list}")
         reference_str = source_link(source_file_list)
     else:
         reference_str = source_file_list
-    print(f"reference_str: {reference_str}")
+    log(f"reference_str: {reference_str}")
 
     output = {"answer": response, "source": reference_str}
 

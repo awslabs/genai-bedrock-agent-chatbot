@@ -43,8 +43,7 @@ class CodeStack(Stack):
         config = self.get_config()
         logging_context = config["logging"]
         kms_key = self.create_kms_key()
-        agent_assets_bucket, athena_bucket = self.create_data_source_bucket(
-            kms_key)
+        agent_assets_bucket, athena_bucket = self.create_data_source_bucket(kms_key)
         self.upload_files_to_s3(agent_assets_bucket, athena_bucket, kms_key)
 
         self.lambda_runtime = lambda_.Runtime.PYTHON_3_12
@@ -83,7 +82,9 @@ class CodeStack(Stack):
             glue_crawler, knowledge_base, agent, agent_resource_role_arn, boto3_layer
         )
 
-        self.create_streamlit_app(logging_context, agent, invoke_lambda)
+        self.create_streamlit_app(
+            logging_context, agent, invoke_lambda, agent_assets_bucket
+        )
 
     def get_config(self):
 
@@ -311,7 +312,7 @@ class CodeStack(Stack):
                 ]
             ),
             database_name=glue_database.ref,
-            description="Crawler job for EC2 pricing",
+            description="Crawler job for tool pricing",
             name=f"{Aws.STACK_NAME}-text2sql-table-crawler",
         )
         NagSuppressions.add_resource_suppressions(
@@ -389,6 +390,7 @@ class CodeStack(Stack):
             code=ecr_image,
             environment={
                 "ATHENA_BUCKET_NAME": athena_bucket.bucket_name,
+                "AGENT_BUCKET_NAME": agent_assets_bucket.bucket_name,
                 "TEXT2SQL_DATABASE": glue_database.ref,
                 "LOG_LEVEL": logging_context["lambda_log_level"],
                 "FEWSHOT_EXAMPLES_PATH": self.FEWSHOT_EXAMPLES_PATH,
@@ -501,8 +503,7 @@ class CodeStack(Stack):
         )
 
         # Attach the custom policy to the role
-        create_index_lambda_execution_role.add_to_policy(
-            opensearch_policy_statement)
+        create_index_lambda_execution_role.add_to_policy(opensearch_policy_statement)
 
         # get the role arn
         create_index_lambda_execution_role_arn = (
@@ -678,7 +679,7 @@ class CodeStack(Stack):
             self,
             "BedrockOpenSearchKnowledgeBase",
             name=kb_name,
-            description="Use this for returning descriptive answers and instructions directly from AWS EC2 Documentation. Use to answer qualitative/guidance questions such as 'how do I',  general instructions and guidelines.",
+            description="Use this for returning descriptive answers and instructions for how to use various tools & hardware.",
             role_arn=agent_resource_role_arn,
             storage_configuration=OpenSearchServerlessStorageConfiguration(
                 opensearch_serverless_configuration=OpenSearchServerlessConfiguration(
@@ -925,7 +926,9 @@ class CodeStack(Stack):
 
         return lambda_function_update
 
-    def create_streamlit_app(self, logging_context, agent, invoke_lambda):
+    def create_streamlit_app(
+        self, logging_context, agent, invoke_lambda, agent_assets_bucket
+    ):
         # Create a VPC
         vpc = ec2.Vpc(
             self, "ChatBotDemoVPC", max_azs=2, vpc_name=f"{Aws.STACK_NAME}-vpc"
@@ -964,6 +967,7 @@ class CodeStack(Stack):
                 container_port=8501,
                 environment={
                     "LAMBDA_FUNCTION_NAME": invoke_lambda.function_name,
+                    "BUCKET_NAME": agent_assets_bucket.bucket_name,
                     "LOG_LEVEL": logging_context["streamlit_log_level"],
                     "AGENT_ID": agent.agent_id,
                 },
@@ -1007,6 +1011,10 @@ class CodeStack(Stack):
 
         # Add policies to task role
         invoke_lambda.grant_invoke(fargate_service.task_definition.task_role)
+
+        fargate_service.task_definition.task_role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")
+        )
 
         # Setup task auto-scaling
         scaling = fargate_service.service.auto_scale_task_count(max_capacity=3)
