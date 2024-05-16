@@ -61,7 +61,7 @@
         "/image_description": {
             "get": {
                 "summary": "Get a description of an image provided by the user.",
-                "description": "If provided wit an image filename (ending in .jpg, .png, .jpeg) you can use this tool to extract helpful information. The returned description will help you look the right pricing data with getUc2Response",
+                "description": "If provided wit an image filename (ending in .jpg, .png, .jpeg) you can use this tool to extract helpful information. The returned description will help you look the right pricing data with getUc2Response. Only use this if a filename with extension ending .jpg, .png, or.jpeg is provided.",
                 "operationId": "getUc3Response",
                 "parameters": [
                     {

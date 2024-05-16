@@ -69,15 +69,18 @@ def get_response(event, context):
             local_folder = "/tmp/"
             local_path = f"{local_folder}" + file_name
             s3_key = f"assets/images/{file_name}"
-
-            log(
-                f"Downloading image from s3://{Connections.agent_bucket_name}/{s3_key}, local path: {local_path}"
-            )
-            Connections.s3_client.download_file(
-                Connections.agent_bucket_name, s3_key, local_path
-            )
-            # call image_to_text(filename, user_input)
-            answer = image_to_text(local_path, user_input)
+            try:
+                log(
+                    f"Downloading image from s3://{Connections.agent_bucket_name}/{s3_key}, local path: {local_path}"
+                )
+                Connections.s3_client.download_file(
+                    Connections.agent_bucket_name, s3_key, local_path
+                )
+                # call image_to_text(filename, user_input)
+                answer = image_to_text(local_path, user_input)
+            except Exception as e:
+                log(f"Error downloading image: {e}")
+                answer = f"Error downloading image.{e}"
             log(f"Img Answer: {answer}")
 
             output = {
