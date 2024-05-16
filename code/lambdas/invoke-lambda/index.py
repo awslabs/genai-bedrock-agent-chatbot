@@ -234,17 +234,22 @@ def lambda_handler(event, context):
     res = get_agent_response(streaming_response)
     log(f"res: {res}")
 
-    response, _, source_file_list = res
+    try:
+        response, _, source_file_list = res
 
-    log(f"response: {response}")
-    log(f"source_file_list: {source_file_list}")
+        log(f"response: {response}")
+        log(f"source_file_list: {source_file_list}")
 
-    if isinstance(source_file_list, list):
-        print(f"source_file_list {source_file_list}")
-        reference_str = source_link(source_file_list)
-    else:
-        reference_str = source_file_list
-    log(f"reference_str: {reference_str}")
+        if isinstance(source_file_list, list):
+            print(f"source_file_list {source_file_list}")
+            reference_str = source_link(source_file_list)
+        else:
+            reference_str = source_file_list
+        log(f"reference_str: {reference_str}")
+    except Exception as e:
+        log(f"Error: {e}")
+        response = f"Error getting response {e}"
+        reference_str = "Error getting reference"
 
     output = {"answer": response, "source": reference_str}
 
