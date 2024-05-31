@@ -96,36 +96,7 @@ def get_agent_response(response):
 
             # Print the response text
             print("Response from the agent:", chunk_text)
-            # If there are citations with more detailed responses, print them
-            reference_text = ""
-            source_file_list = []
-            if (
-                "attribution" in event["chunk"]
-                and "citations" in event["chunk"]["attribution"]
-            ):
-                for citation in event["chunk"]["attribution"]["citations"]:
-                    if (
-                        "generatedResponsePart" in citation
-                        and "textResponsePart" in citation["generatedResponsePart"]
-                    ):
-                        text_part = citation["generatedResponsePart"][
-                            "textResponsePart"
-                        ]["text"]
-                        print("Detailed response part:", text_part)
-                    source_file_list = []
-                    if "retrievedReferences" in citation:
-                        for reference in citation["retrievedReferences"]:
-                            if (
-                                "content" in reference
-                                and "text" in reference["content"]
-                            ):
-                                reference_text = reference["content"]["text"]
-                                print("Reference text:", reference_text)
-                            if "location" in reference:
-                                source_file = reference["location"]["s3Location"]["uri"]
-                                source_file_list.append(source_file)
-                    print(f"source_file_list: {source_file_list}")
-
+    sql_query_from_llm = None
     for t in trace_list:
         if "orchestrationTrace" in t["trace"].keys():
             if "observation" in t["trace"]["orchestrationTrace"].keys():
@@ -134,9 +105,31 @@ def get_agent_response(response):
                     sql_query_from_llm = extract_sql_query(
                         obs["actionGroupInvocationOutput"]["text"]
                     )
-                    source_file_list = sql_query_from_llm
+    if sql_query_from_llm:
+        source_file_list = sql_query_from_llm
+    else:
+        try:
+            source_file_list = extract_source_list_from_kb(trace_list)
+        except Exception as e:
+            log(f"Error extracting source list from KB: {e}")
+            source_file_list = ""
+    return chunk_text, source_file_list
 
-    return chunk_text, reference_text, source_file_list
+
+def extract_source_list_from_kb(trace_list):
+    """
+    Extract the knowledge base lookup output from the trace list and return the S3 bucket paths.
+    """
+    for trace in trace_list:
+        if  'orchestrationTrace' in trace['trace'].keys() and 'observation' in trace['trace']['orchestrationTrace'].keys():
+            if 'knowledgeBaseLookupOutput' in trace['trace']['orchestrationTrace']['observation']:
+                ref_list = trace['trace']['orchestrationTrace']['observation']['knowledgeBaseLookupOutput']['retrievedReferences']
+    log(f"ref_list: {ref_list}")
+    ref_s3_list = []
+    for rl in ref_list:
+        ref_s3_list.append(rl['location']['s3Location']['uri'])
+    
+    return ref_s3_list
 
 
 def source_link(input_source_list):
@@ -217,7 +210,7 @@ def lambda_handler(event, context):
     body = event["body"]
 
     streaming_response = invoke_agent(body["query"], body["session_id"])
-    response, _, source_file_list = get_agent_response(streaming_response)
+    response, source_file_list = get_agent_response(streaming_response)
     if isinstance(source_file_list, list):
         reference_str = source_link(source_file_list)
     else:
