@@ -1,3 +1,8 @@
+import os
+import tempfile
+
+os.environ["NLTK_DATA"] = tempfile.gettempdir()
+
 from build_query_engine import query_engine
 import json
 import logging
