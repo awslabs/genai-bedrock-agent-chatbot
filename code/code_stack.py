@@ -24,7 +24,6 @@ from aws_cdk import (
     aws_opensearchserverless as opensearchserverless,
     aws_bedrock as bedrock,
 )
-from aws_cdk.aws_lambda_python_alpha import PythonLayerVersion
 from constructs import Construct
 from aws_cdk.aws_ecr_assets import Platform
 from cdk_nag import NagSuppressions
@@ -344,16 +343,16 @@ class CodeStack(Stack):
         create a Lambda layer with necessary dependencies.
         """
         # Create the Lambda layer
-        layer = PythonLayerVersion(
+        layer_code_path = path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name)
+        layer = lambda_.LayerVersion(
             self,
             layer_name,
-            entry=path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name),
+            code=lambda_.Code.from_asset(layer_code_path),
             compatible_runtimes=[self.lambda_runtime],
             compatible_architectures=[lambda_.Architecture.ARM_64],
-            description="A layer new version of boto3",
+            description="A layer with boto3",
             layer_version_name=layer_name,
         )
-
         return layer
 
     def create_agent_executor_lambda(
