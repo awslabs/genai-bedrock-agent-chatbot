@@ -42,7 +42,7 @@ class CodeStack(Stack):
         self.upload_files_to_s3(agent_assets_bucket, athena_bucket, kms_key)
 
         self.lambda_runtime = lambda_.Runtime.PYTHON_3_12
-        boto3_layer = self.create_lambda_layer("boto3_layer")
+        # boto3_layer = self.create_lambda_layer("boto3_layer")
         opensearch_layer = self.create_lambda_layer("opensearch_layer")
 
         glue_database, glue_crawler = self.create_glue_database(athena_bucket, kms_key)
@@ -83,7 +83,7 @@ class CodeStack(Stack):
         )
 
         invoke_lambda = self.create_bedrock_agent_invoke_lambda(
-            agent, agent_assets_bucket, boto3_layer
+            agent, agent_assets_bucket
         )
 
         _ = self.create_update_lambda(
@@ -91,8 +91,7 @@ class CodeStack(Stack):
             knowledge_base,
             cfn_data_source,
             agent,
-            agent_resource_role_arn,
-            boto3_layer,
+            agent_resource_role_arn
         )
 
         self.create_streamlit_app(logging_context, agent, invoke_lambda)
@@ -338,22 +337,22 @@ class CodeStack(Stack):
 
         return glue_database, cfn_crawler
 
-    def create_lambda_layer(self, layer_name):
-        """
-        create a Lambda layer with necessary dependencies.
-        """
-        # Create the Lambda layer
-        layer_code_path = path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name)
-        layer = lambda_.LayerVersion(
-            self,
-            layer_name,
-            code=lambda_.Code.from_asset(layer_code_path),
-            compatible_runtimes=[self.lambda_runtime],
-            compatible_architectures=[lambda_.Architecture.ARM_64],
-            description="A layer with boto3",
-            layer_version_name=layer_name,
-        )
-        return layer
+    # def create_lambda_layer(self, layer_name):
+    #     """
+    #     create a Lambda layer with necessary dependencies.
+    #     """
+    #     # Create the Lambda layer
+    #     layer_code_path = path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name)
+    #     layer = lambda_.LayerVersion(
+    #         self,
+    #         layer_name,
+    #         code=lambda_.Code.from_asset(layer_code_path),
+    #         compatible_runtimes=[self.lambda_runtime],
+    #         compatible_architectures=[lambda_.Architecture.ARM_64],
+    #         description="A layer with boto3",
+    #         layer_version_name=layer_name,
+    #     )
+    #     return layer
 
     def create_agent_executor_lambda(
         self,
@@ -361,7 +360,7 @@ class CodeStack(Stack):
         athena_bucket,
         kms_key,
         glue_database,
-        logging_context,
+        logging_context
     ):
 
         ecr_image = lambda_.EcrImageCode.from_asset_image(
@@ -832,7 +831,7 @@ class CodeStack(Stack):
         return cfn_agent
 
     def create_bedrock_agent_invoke_lambda(
-        self, agent, agent_assets_bucket, boto3_layer
+        self, agent, agent_assets_bucket
     ):
 
         invoke_lambda_role = iam.Role(
@@ -884,7 +883,6 @@ class CodeStack(Stack):
             code=lambda_.Code.from_asset(
                 path.join(os.getcwd(), self.LAMBDAS_SOURCE_FOLDER, "invoke-lambda")
             ),
-            layers=[boto3_layer],
             environment={"AGENT_ID": agent.attr_agent_id, "REGION_NAME": Aws.REGION},
             role=invoke_lambda_role,
             timeout=Duration.minutes(15),
@@ -904,8 +902,7 @@ class CodeStack(Stack):
         knowledge_base,
         cfn_data_source,
         bedrock_agent,
-        agent_resource_role_arn,
-        boto3_layer,
+        agent_resource_role_arn
     ):
 
         # Create IAM role for the update lambda
@@ -999,7 +996,6 @@ class CodeStack(Stack):
             role=lambda_role,
             timeout=Duration.minutes(15),
             memory_size=1024,
-            layers=[boto3_layer],
         )
 
         lambda_provider = cr.Provider(
