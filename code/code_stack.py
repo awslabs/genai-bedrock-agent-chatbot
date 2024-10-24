@@ -337,22 +337,22 @@ class CodeStack(Stack):
 
         return glue_database, cfn_crawler
 
-    # def create_lambda_layer(self, layer_name):
-    #     """
-    #     create a Lambda layer with necessary dependencies.
-    #     """
-    #     # Create the Lambda layer
-    #     layer_code_path = path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name)
-    #     layer = lambda_.LayerVersion(
-    #         self,
-    #         layer_name,
-    #         code=lambda_.Code.from_asset(layer_code_path),
-    #         compatible_runtimes=[self.lambda_runtime],
-    #         compatible_architectures=[lambda_.Architecture.ARM_64],
-    #         description="A layer with boto3",
-    #         layer_version_name=layer_name,
-    #     )
-    #     return layer
+    def create_lambda_layer(self, layer_name):
+        """
+        create a Lambda layer with necessary dependencies.
+        """
+        # Create the Lambda layer
+        layer_code_path = path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name)
+        layer = lambda_.LayerVersion(
+            self,
+            layer_name,
+            code=lambda_.Code.from_asset(layer_code_path),
+            compatible_runtimes=[self.lambda_runtime],
+            compatible_architectures=[lambda_.Architecture.ARM_64],
+            description="A layer with boto3",
+            layer_version_name=layer_name,
+        )
+        return layer
 
     def create_agent_executor_lambda(
         self,
@@ -394,7 +394,7 @@ class CodeStack(Stack):
             "AgentActionLambdaFunction",
             function_name=f"{Aws.STACK_NAME}-agent-action-lambda-{Aws.ACCOUNT_ID}-{Aws.REGION}",
             description="Lambda code for GenAI Chatbot",
-            architecture=lambda_.Architecture.X86_64,  # X86_64, ARM_64
+            architecture=lambda_.Architecture.ARM_64,  # X86_64, ARM_64
             handler=lambda_.Handler.FROM_IMAGE,
             runtime=lambda_.Runtime.FROM_IMAGE,
             code=ecr_image,
