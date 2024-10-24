@@ -1039,8 +1039,7 @@ class CodeStack(Stack):
 
         # Build Dockerfile from local folder and push to ECR
         image = ecs.ContainerImage.from_asset(
-            path.join(os.getcwd(), "code", "streamlit-app"),
-            platform=Platform.LINUX_ARM64,
+            path.join(os.getcwd(), "code", "streamlit-app")
         )
 
         #  Create Fargate service
