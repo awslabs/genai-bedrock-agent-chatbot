@@ -23,6 +23,8 @@ from aws_cdk import (
     aws_ecs_patterns as ecs_patterns,
     aws_opensearchserverless as opensearchserverless,
     aws_bedrock as bedrock,
+    BundlingOptions,
+    DockerImage,
 )
 from constructs import Construct
 from aws_cdk.aws_ecr_assets import Platform
@@ -42,6 +44,7 @@ class CodeStack(Stack):
         self.upload_files_to_s3(agent_assets_bucket, athena_bucket, kms_key)
 
         self.lambda_runtime = lambda_.Runtime.PYTHON_3_12
+
         # boto3_layer = self.create_lambda_layer("boto3_layer")
         opensearch_layer = self.create_lambda_layer("opensearch_layer")
 
@@ -91,7 +94,7 @@ class CodeStack(Stack):
             knowledge_base,
             cfn_data_source,
             agent,
-            agent_resource_role_arn
+            agent_resource_role_arn,
         )
 
         self.create_streamlit_app(logging_context, agent, invoke_lambda)
@@ -337,21 +340,53 @@ class CodeStack(Stack):
 
         return glue_database, cfn_crawler
 
-    def create_lambda_layer(self, layer_name):
+    def create_lambda_layer(self, layer_name: str) -> lambda_.LayerVersion:
         """
-        create a Lambda layer with necessary dependencies.
+        Create a Lambda layer with necessary dependencies.
+        Package installation is handled automatically during CDK deployment using bundling.
+
+        Args:
+            layer_name: Name of the layer and directory containing requirements.txt
+
+        Returns:
+            LayerVersion: The created Lambda layer
         """
-        # Create the Lambda layer
         layer_code_path = path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name)
+
         layer = lambda_.LayerVersion(
             self,
             layer_name,
-            code=lambda_.Code.from_asset(layer_code_path),
+            code=lambda_.Code.from_asset(
+                layer_code_path,
+                bundling=BundlingOptions(
+                    image=DockerImage.from_registry(
+                        "public.ecr.aws/sam/build-python3.12"
+                    ),
+                    command=[
+                        "bash",
+                        "-c",
+                        f"""
+                        # Create the required directory structure
+                        mkdir -p /asset-output/python/lib/python3.12/site-packages
+                        
+                        # Install requirements to the correct directory
+                        pip install \
+                            --platform manylinux2014_aarch64 \
+                            --implementation cp \
+                            --python-version 3.12 \
+                            --only-binary=:all: \
+                            --target /asset-output/python/lib/python3.12/site-packages \
+                            -r requirements.txt
+                        """,
+                    ],
+                ),
+            ),
             compatible_runtimes=[self.lambda_runtime],
             compatible_architectures=[lambda_.Architecture.ARM_64],
-            description="A layer with boto3",
+            description=f"Lambda layer for {layer_name}",
             layer_version_name=layer_name,
         )
+
         return layer
 
     def create_agent_executor_lambda(
@@ -360,7 +395,7 @@ class CodeStack(Stack):
         athena_bucket,
         kms_key,
         glue_database,
-        logging_context
+        logging_context,
     ):
 
         ecr_image = lambda_.EcrImageCode.from_asset_image(
@@ -394,7 +429,7 @@ class CodeStack(Stack):
             "AgentActionLambdaFunction",
             function_name=f"{Aws.STACK_NAME}-agent-action-lambda-{Aws.ACCOUNT_ID}-{Aws.REGION}",
             description="Lambda code for GenAI Chatbot",
-            architecture=lambda_.Architecture.ARM_64,  # X86_64, ARM_64
+            architecture=lambda_.Architecture.X86_64,  # X86_64, ARM_64
             handler=lambda_.Handler.FROM_IMAGE,
             runtime=lambda_.Runtime.FROM_IMAGE,
             code=ecr_image,
@@ -622,6 +657,7 @@ class CodeStack(Stack):
                 )
             ),
             layers=[opensearch_layer],
+            architecture=lambda_.Architecture.ARM_64,
             environment={
                 "REGION_NAME": Aws.REGION,
                 "COLLECTION_HOST": cfn_collection.attr_collection_endpoint,
@@ -644,7 +680,6 @@ class CodeStack(Stack):
             "LambdaCreateIndexCustomResource",
             service_token=lambda_provider.service_token,
         )
-
         return (
             cfn_collection,
             vector_field_name,
@@ -830,9 +865,7 @@ class CodeStack(Stack):
 
         return cfn_agent
 
-    def create_bedrock_agent_invoke_lambda(
-        self, agent, agent_assets_bucket
-    ):
+    def create_bedrock_agent_invoke_lambda(self, agent, agent_assets_bucket):
 
         invoke_lambda_role = iam.Role(
             self,
@@ -902,7 +935,7 @@ class CodeStack(Stack):
         knowledge_base,
         cfn_data_source,
         bedrock_agent,
-        agent_resource_role_arn
+        agent_resource_role_arn,
     ):
 
         # Create IAM role for the update lambda
