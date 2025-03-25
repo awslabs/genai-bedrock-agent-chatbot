@@ -43,7 +43,7 @@
         "action_group_description": "This is an action group for converting quantitative question, or part of a question, into a SQL query."
       },
       "models": {
-        "bedrock_agent_foundation_model": "anthropic.claude-v2"
+        "bedrock_agent_foundation_model": "anthropic.claude-3-5-sonnet-20240620-v1:0"
       }
     },
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
