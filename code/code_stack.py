@@ -1,5 +1,4 @@
 import os
-import sys
 import os.path as path
 import json
 from aws_cdk import (
@@ -22,16 +21,20 @@ from aws_cdk import (
     aws_s3_deployment as s3deploy,
     aws_ecs_patterns as ecs_patterns,
     aws_opensearchserverless as opensearchserverless,
-    aws_bedrock as bedrock,
-    BundlingOptions,
-    DockerImage,
 )
+from aws_cdk.aws_lambda_python_alpha import PythonLayerVersion
 from constructs import Construct
 from aws_cdk.aws_ecr_assets import Platform
 from cdk_nag import NagSuppressions
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "assets"))
-from agent_prompts.agent_prompts import PREPROCESSING_TEMPLATE, ORCHESTRATION_TEMPLATE
+from bedrock_agent import BedrockAgent, ActionGroup, BedrockKnowledgeBase
+from bedrock_agent import (
+    OpenSearchServerlessStorageConfiguration,
+    OpenSearchServerlessConfiguration,
+    OpenSearchFieldMapping,
+    DataSource,
+    DataSourceConfiguration,
+    S3Configuration,
+)
 
 
 class CodeStack(Stack):
@@ -40,17 +43,16 @@ class CodeStack(Stack):
         config = self.get_config()
         logging_context = config["logging"]
         kms_key = self.create_kms_key()
-        agent_assets_bucket, athena_bucket = self.create_data_source_bucket(kms_key)
+        agent_assets_bucket, athena_bucket = self.create_data_source_bucket(
+            kms_key)
         self.upload_files_to_s3(agent_assets_bucket, athena_bucket, kms_key)
 
         self.lambda_runtime = lambda_.Runtime.PYTHON_3_12
-
-        # boto3_layer = self.create_lambda_layer("boto3_layer")
+        boto3_layer = self.create_lambda_layer("boto3_layer")
         opensearch_layer = self.create_lambda_layer("opensearch_layer")
 
         glue_database, glue_crawler = self.create_glue_database(athena_bucket, kms_key)
-
-        agent_executor_lambda = self.create_agent_executor_lambda(
+        agent_executor_lambda = self.create_lambda_function(
             agent_assets_bucket,
             athena_bucket,
             kms_key,
@@ -60,41 +62,25 @@ class CodeStack(Stack):
 
         agent_resource_role = self.create_agent_execution_role(agent_assets_bucket)
 
-        (
-            cfn_collection,
-            vector_field_name,
-            vector_index_name,
-            lambda_cr,
-        ) = self.create_opensearch_index(agent_resource_role, opensearch_layer)
-
-        knowledge_base, agent_resource_role_arn = self.create_knowledgebase(
-            vector_field_name,
-            vector_index_name,
-            cfn_collection,
-            agent_resource_role,
-            lambda_cr,
-        )
-        cfn_data_source = self.create_agent_data_source(
-            knowledge_base, agent_assets_bucket
+        (cfn_collection, vector_field_name, vector_index_name, lambda_cr) = (
+            self.create_opensearch_index(agent_resource_role, opensearch_layer)
         )
 
-        agent = self.create_bedrock_agent(
-            agent_executor_lambda,
-            agent_assets_bucket,
-            agent_resource_role,
-            knowledge_base,
-        )
-
-        invoke_lambda = self.create_bedrock_agent_invoke_lambda(
-            agent, agent_assets_bucket
+        knowledge_base, agent, invoke_lambda, agent_resource_role_arn = (
+            self.create_bedrock_agent(
+                agent_executor_lambda,
+                agent_assets_bucket,
+                boto3_layer,
+                agent_resource_role,
+                cfn_collection,
+                vector_field_name,
+                vector_index_name,
+                lambda_cr,
+            )
         )
 
         _ = self.create_update_lambda(
-            glue_crawler,
-            knowledge_base,
-            cfn_data_source,
-            agent,
-            agent_resource_role_arn,
+            glue_crawler, knowledge_base, agent, agent_resource_role_arn, boto3_layer
         )
 
         self.create_streamlit_app(logging_context, agent, invoke_lambda)
@@ -340,56 +326,24 @@ class CodeStack(Stack):
 
         return glue_database, cfn_crawler
 
-    def create_lambda_layer(self, layer_name: str) -> lambda_.LayerVersion:
+    def create_lambda_layer(self, layer_name):
         """
-        Create a Lambda layer with necessary dependencies.
-        Package installation is handled automatically during CDK deployment using bundling.
-
-        Args:
-            layer_name: Name of the layer and directory containing requirements.txt
-
-        Returns:
-            LayerVersion: The created Lambda layer
+        create a Lambda layer with necessary dependencies.
         """
-        layer_code_path = path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name)
-
-        layer = lambda_.LayerVersion(
+        # Create the Lambda layer
+        layer = PythonLayerVersion(
             self,
             layer_name,
-            code=lambda_.Code.from_asset(
-                layer_code_path,
-                bundling=BundlingOptions(
-                    image=DockerImage.from_registry(
-                        "public.ecr.aws/sam/build-python3.12"
-                    ),
-                    command=[
-                        "bash",
-                        "-c",
-                        f"""
-                        # Create the required directory structure
-                        mkdir -p /asset-output/python/lib/python3.12/site-packages
-                        
-                        # Install requirements to the correct directory
-                        pip install \
-                            --platform manylinux2014_aarch64 \
-                            --implementation cp \
-                            --python-version 3.12 \
-                            --only-binary=:all: \
-                            --target /asset-output/python/lib/python3.12/site-packages \
-                            -r requirements.txt
-                        """,
-                    ],
-                ),
-            ),
+            entry=path.join(os.getcwd(), self.LAYERS_SOURCE_FOLDER, layer_name),
             compatible_runtimes=[self.lambda_runtime],
             compatible_architectures=[lambda_.Architecture.ARM_64],
-            description=f"Lambda layer for {layer_name}",
+            description="A layer new version of boto3",
             layer_version_name=layer_name,
         )
 
         return layer
 
-    def create_agent_executor_lambda(
+    def create_lambda_function(
         self,
         agent_assets_bucket,
         athena_bucket,
@@ -471,7 +425,14 @@ class CodeStack(Stack):
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=["bedrock:InvokeModel"],
-                resources=[f"arn:aws:bedrock:{Aws.REGION}::foundation-model/*"],
+                resources=[
+                    # f"arn:aws:bedrock:${Aws.REGION}:${Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0",
+                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-v2",
+                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-v2:1",
+                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-instant-v1",
+                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/amazon.titan-embed-text-v1",
+                ],
             ),
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
@@ -506,7 +467,6 @@ class CodeStack(Stack):
         return agent_resource_role
 
     def create_opensearch_index(self, agent_resource_role, opensearch_layer):
-
         vector_index_name = "bedrock-knowledgebase-index"
         vector_field_name = "bedrock-knowledge-base-default-vector"
 
@@ -543,14 +503,23 @@ class CodeStack(Stack):
         )
 
         # Attach the custom policy to the role
-        create_index_lambda_execution_role.add_to_policy(opensearch_policy_statement)
+        create_index_lambda_execution_role.add_to_policy(
+            opensearch_policy_statement)
 
         # get the role arn
         create_index_lambda_execution_role_arn = (
             create_index_lambda_execution_role.role_arn
         )
 
-        agent_resource_role.add_to_policy(opensearch_policy_statement)
+        opensearch_api_policy_statement = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["aoss:APIAccessAll"],
+            resources=[
+                f"arn:aws:aoss:{Aws.REGION}:{Aws.ACCOUNT_ID}:collection/{cfn_collection.attr_id}"
+            ],
+        )
+
+        agent_resource_role.add_to_policy(opensearch_api_policy_statement)
 
         policy_json = {
             "Rules": [
@@ -657,7 +626,6 @@ class CodeStack(Stack):
                 )
             ),
             layers=[opensearch_layer],
-            architecture=lambda_.Architecture.ARM_64,
             environment={
                 "REGION_NAME": Aws.REGION,
                 "COLLECTION_HOST": cfn_collection.attr_collection_endpoint,
@@ -680,192 +648,104 @@ class CodeStack(Stack):
             "LambdaCreateIndexCustomResource",
             service_token=lambda_provider.service_token,
         )
-        return (
-            cfn_collection,
-            vector_field_name,
-            vector_index_name,
-            lambda_cr,
-        )
 
-    def create_knowledgebase(
+        return cfn_collection, vector_field_name, vector_index_name, lambda_cr
+
+    def create_bedrock_agent(
         self,
+        agent_executor_lambda,
+        agent_assets_bucket,
+        boto3_layer,
+        agent_resource_role,
+        cfn_collection,
         vector_field_name,
         vector_index_name,
-        cfn_collection,
-        agent_resource_role,
         lambda_cr,
     ):
+        """
+        Create a bedrock agent
+        """
+        s3_bucket_name = agent_assets_bucket.bucket_name
+        s3_object_key = f"{self.AGENT_SCHEMA_DESTINATION_PREFIX}/artifacts_schema.json"
 
-        kb_name = "BedrockKnowledgeBase"
+        kb_name = f"BedrockKnowledgeBase-{Aws.STACK_NAME}"
+        data_source_name = f"BedrockKnowledgeBaseSource-{Aws.STACK_NAME}"
         text_field = "AMAZON_BEDROCK_TEXT_CHUNK"
         metadata_field = "AMAZON_BEDROCK_METADATA"
+        storage_configuration_type = "OPENSEARCH_SERVERLESS"
+        data_source_type = "S3"
+        data_source_bucket_arn = f"arn:aws:s3:::{agent_assets_bucket.bucket_name}"
         agent_resource_role_arn = agent_resource_role.role_arn
-
-        # mid = bedrock.FoundationModelIdentifier("amazon.titan-embed-text-v2:0")
-
-        embed_moodel = bedrock.FoundationModel.from_foundation_model_id(
-            self,
-            "embedding_model",
-            bedrock.FoundationModelIdentifier.AMAZON_TITAN_EMBED_G1_TEXT_02,
-        )
-        cfn_knowledge_base = "cfn_knowledge_base"
-
-        cfn_knowledge_base = bedrock.CfnKnowledgeBase(
+        knowledge_base = BedrockKnowledgeBase(
             self,
             "BedrockOpenSearchKnowledgeBase",
-            knowledge_base_configuration=bedrock.CfnKnowledgeBase.KnowledgeBaseConfigurationProperty(
-                type="VECTOR",
-                vector_knowledge_base_configuration=bedrock.CfnKnowledgeBase.VectorKnowledgeBaseConfigurationProperty(
-                    embedding_model_arn=embed_moodel.model_arn
-                ),
-            ),
             name=kb_name,
+            description="Use this for returning descriptive answers and instructions directly from AWS EC2 Documentation. Use to answer qualitative/guidance questions such as 'how do I',  general instructions and guidelines.",
             role_arn=agent_resource_role_arn,
-            storage_configuration=bedrock.CfnKnowledgeBase.StorageConfigurationProperty(
-                type="OPENSEARCH_SERVERLESS",
-                # the properties below are optional
-                opensearch_serverless_configuration=bedrock.CfnKnowledgeBase.OpenSearchServerlessConfigurationProperty(
+            storage_configuration=OpenSearchServerlessStorageConfiguration(
+                opensearch_serverless_configuration=OpenSearchServerlessConfiguration(
                     collection_arn=cfn_collection.attr_arn,
-                    field_mapping=bedrock.CfnKnowledgeBase.OpenSearchServerlessFieldMappingProperty(
+                    field_mapping=OpenSearchFieldMapping(
                         metadata_field=metadata_field,
                         text_field=text_field,
                         vector_field=vector_field_name,
                     ),
                     vector_index_name=vector_index_name,
                 ),
+                type=storage_configuration_type,
             ),
-            description="Use this for returning descriptive answers and instructions directly from AWS EC2 Documentation. Use to answer qualitative/guidance questions such as 'how do I',  general instructions and guidelines.",
+            data_source=DataSource(
+                name=data_source_name,
+                data_source_configuration=DataSourceConfiguration(
+                    s3_configuration=S3Configuration(
+                        bucket_arn=data_source_bucket_arn,
+                        inclusion_prefixes=[
+                            f"{self.KNOWLEDGEBASE_DESTINATION_PREFIX}/"
+                        ],
+                    ),
+                    type=data_source_type,
+                ),
+            ),
         )
 
-        for child in lambda_cr.node.children:
+        for child in knowledge_base.node.children:
             if isinstance(child, CustomResource):
+                cfn_resource = child
                 break
 
-        cfn_knowledge_base.add_dependency(child)
+        cfn_resource.node.add_dependency(cfn_collection)
+        cfn_resource.node.add_dependency(lambda_cr)
 
-        return cfn_knowledge_base, agent_resource_role_arn
-
-    def create_agent_data_source(self, knowledge_base, agent_assets_bucket):
-        data_source_bucket_arn = f"arn:aws:s3:::{agent_assets_bucket.bucket_name}"
-
-        cfn_data_source = bedrock.CfnDataSource(
-            self,
-            "BedrockKnowledgeBaseSource",
-            data_source_configuration=bedrock.CfnDataSource.DataSourceConfigurationProperty(
-                s3_configuration=bedrock.CfnDataSource.S3DataSourceConfigurationProperty(
-                    bucket_arn=data_source_bucket_arn,
-                    # the properties below are optional
-                    bucket_owner_account_id=Aws.ACCOUNT_ID,
-                    inclusion_prefixes=[f"{self.KNOWLEDGEBASE_DESTINATION_PREFIX}/"],
-                ),
-                type="S3",
-            ),
-            knowledge_base_id=knowledge_base.attr_knowledge_base_id,
-            name="BedrockKnowledgeBaseSource",
-            # the properties below are optional
-            data_deletion_policy="RETAIN",
-            description="description",
+        action_group = ActionGroup(
+            action_group_name="ChatBotBedrockAgentActionGroup",
+            description=self.ACTION_GROUP_DESCRIPTION,
+            action_group_executor=agent_executor_lambda.function_arn,
+            s3_bucket_name=s3_bucket_name,
+            s3_object_key=s3_object_key,
         )
 
-        return cfn_data_source
-
-    def create_bedrock_agent(
-        self,
-        agent_executor_lambda,
-        agent_assets_bucket,
-        agent_resource_role,
-        cfn_knowledge_base,
-    ):
-        agent_resource_role_arn = agent_resource_role.role_arn
-        s3_bucket_name = agent_assets_bucket.bucket_name
-        s3_object_key = f"{self.AGENT_SCHEMA_DESTINATION_PREFIX}/artifacts_schema.json"
-
-        cfn_agent = bedrock.CfnAgent(
+        agent = BedrockAgent(
             self,
             "ChatbotBedrockAgent",
             agent_name=self.BEDROCK_AGENT_NAME,
-            # the properties below are optional
-            action_groups=[
-                bedrock.CfnAgent.AgentActionGroupProperty(
-                    action_group_name="ChatBotBedrockAgentActionGroup",
-                    # the properties below are optional
-                    action_group_executor=bedrock.CfnAgent.ActionGroupExecutorProperty(
-                        lambda_=agent_executor_lambda.function_arn
-                    ),
-                    ## action_group_state="actionGroupState",
-                    api_schema=bedrock.CfnAgent.APISchemaProperty(
-                        # payload="payload",
-                        s3=bedrock.CfnAgent.S3IdentifierProperty(
-                            s3_bucket_name=s3_bucket_name, s3_object_key=s3_object_key
-                        ),
-                    ),
-                    description=self.ACTION_GROUP_DESCRIPTION,
-                    ## parent_action_group_signature="parentActionGroupSignature",
-                    ## skip_resource_in_use_check_on_delete=False,
-                )
-            ],
-            agent_resource_role_arn=agent_resource_role_arn,
             description="Bedrock Chatbot Agent",
-            foundation_model=self.BEDROCK_AGENT_FM,
-            idle_session_ttl_in_seconds=3600,
             instruction=self.AGENT_INSTRUCTION,
-            knowledge_bases=[
-                bedrock.CfnAgent.AgentKnowledgeBaseProperty(
-                    description=cfn_knowledge_base.description,
-                    knowledge_base_id=cfn_knowledge_base.attr_knowledge_base_id,
-                )
+            foundation_model=self.BEDROCK_AGENT_FM,
+            agent_resource_role_arn=agent_resource_role_arn,
+            action_groups=[action_group],
+            idle_session_ttl_in_seconds=3600,
+            knowledge_base_associations=[
+                {
+                    "knowledgeBaseName": kb_name,
+                    "instruction": self.KNOWLEDGEBASE_INSTRUCTION,
+                }
             ],
-            prompt_override_configuration=bedrock.CfnAgent.PromptOverrideConfigurationProperty(
-                prompt_configurations=[
-                    bedrock.CfnAgent.PromptConfigurationProperty(
-                        base_prompt_template=PREPROCESSING_TEMPLATE,
-                        inference_configuration=bedrock.CfnAgent.InferenceConfigurationProperty(
-                            maximum_length=256,
-                            stop_sequences=["\n\nHuman:"],
-                            temperature=0,
-                            top_k=250,
-                            top_p=1,
-                        ),
-                        parser_mode="DEFAULT",
-                        prompt_creation_mode="OVERRIDDEN",
-                        prompt_state="ENABLED",
-                        prompt_type="PRE_PROCESSING",
-                    ),
-                    bedrock.CfnAgent.PromptConfigurationProperty(
-                        base_prompt_template=ORCHESTRATION_TEMPLATE,
-                        inference_configuration=bedrock.CfnAgent.InferenceConfigurationProperty(
-                            maximum_length=2048,
-                            stop_sequences=["</function_call>", "</answer>", "/error"],
-                            temperature=0,
-                            top_k=250,
-                            top_p=1,
-                        ),
-                        parser_mode="DEFAULT",
-                        prompt_creation_mode="OVERRIDDEN",
-                        prompt_state="ENABLED",
-                        prompt_type="ORCHESTRATION",
-                    ),
-                    bedrock.CfnAgent.PromptConfigurationProperty(
-                        base_prompt_template=ORCHESTRATION_TEMPLATE,
-                        inference_configuration=bedrock.CfnAgent.InferenceConfigurationProperty(
-                            maximum_length=2048,
-                            stop_sequences=["\n\nHuman:"],
-                            temperature=0,
-                            top_k=250,
-                            top_p=1,
-                        ),
-                        parser_mode="DEFAULT",
-                        prompt_creation_mode="OVERRIDDEN",
-                        prompt_state="ENABLED",
-                        prompt_type="KNOWLEDGE_BASE_RESPONSE_GENERATION",
-                    ),
-                ]
-            ),
         )
-
-        return cfn_agent
-
-    def create_bedrock_agent_invoke_lambda(self, agent, agent_assets_bucket):
+        for child in agent.node.children:
+            if isinstance(child, CustomResource):
+                cfn_agent_resource = child
+                break
+        cfn_agent_resource.node.add_dependency(knowledge_base)
 
         invoke_lambda_role = iam.Role(
             self,
@@ -889,8 +769,8 @@ class CodeStack(Stack):
                     "bedrock:InvokeAgent",
                 ],
                 resources=[
-                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:agent/{agent.attr_agent_id}",
-                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:agent-alias/{agent.attr_agent_id}/*",
+                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:agent/{agent.agent_id}",
+                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:agent-alias/{agent.agent_id}/*",
                 ],
             )
         )
@@ -916,7 +796,8 @@ class CodeStack(Stack):
             code=lambda_.Code.from_asset(
                 path.join(os.getcwd(), self.LAMBDAS_SOURCE_FOLDER, "invoke-lambda")
             ),
-            environment={"AGENT_ID": agent.attr_agent_id, "REGION_NAME": Aws.REGION},
+            layers=[boto3_layer],
+            environment={"AGENT_ID": agent.agent_id, "REGION_NAME": Aws.REGION},
             role=invoke_lambda_role,
             timeout=Duration.minutes(15),
             tracing=lambda_.Tracing.ACTIVE,
@@ -927,15 +808,15 @@ class CodeStack(Stack):
             value=self.invoke_lambda.function_name,
         )
 
-        return self.invoke_lambda
+        return knowledge_base, agent, self.invoke_lambda, agent_resource_role_arn
 
     def create_update_lambda(
         self,
         glue_crawler,
         knowledge_base,
-        cfn_data_source,
         bedrock_agent,
         agent_resource_role_arn,
+        boto3_layer,
     ):
 
         # Create IAM role for the update lambda
@@ -1018,9 +899,9 @@ class CodeStack(Stack):
             ),
             environment={
                 "GLUE_CRAWLER_NAME": glue_crawler.name,
-                "KNOWLEDGEBASE_ID": knowledge_base.attr_knowledge_base_id,
-                "KNOWLEDGEBASE_DATASOURCE_ID": cfn_data_source.attr_data_source_id,
-                "BEDROCK_AGENT_ID": bedrock_agent.attr_agent_id,
+                "KNOWLEDGEBASE_ID": knowledge_base.knowledge_base_id,
+                "KNOWLEDGEBASE_DATASOURCE_ID": knowledge_base.data_source_id,
+                "BEDROCK_AGENT_ID": bedrock_agent.agent_id,
                 "BEDROCK_AGENT_NAME": self.BEDROCK_AGENT_NAME,
                 "BEDROCK_AGENT_ALIAS": self.BEDROCK_AGENT_ALIAS,
                 "BEDROCK_AGENT_RESOURCE_ROLE_ARN": agent_resource_role_arn,
@@ -1029,6 +910,7 @@ class CodeStack(Stack):
             role=lambda_role,
             timeout=Duration.minutes(15),
             memory_size=1024,
+            layers=[boto3_layer],
         )
 
         lambda_provider = cr.Provider(
@@ -1068,7 +950,8 @@ class CodeStack(Stack):
 
         # Build Dockerfile from local folder and push to ECR
         image = ecs.ContainerImage.from_asset(
-            path.join(os.getcwd(), "code", "streamlit-app")
+            path.join(os.getcwd(), "code", "streamlit-app"),
+            platform=Platform.LINUX_ARM64,
         )
 
         #  Create Fargate service
@@ -1084,7 +967,7 @@ class CodeStack(Stack):
                 environment={
                     "LAMBDA_FUNCTION_NAME": invoke_lambda.function_name,
                     "LOG_LEVEL": logging_context["streamlit_log_level"],
-                    "AGENT_ID": agent.attr_agent_id,
+                    "AGENT_ID": agent.agent_id,
                 },
             ),
             service_name=f"{Aws.STACK_NAME}-chatbot-service",
