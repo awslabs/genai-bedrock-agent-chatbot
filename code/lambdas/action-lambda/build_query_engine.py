@@ -1,18 +1,14 @@
 from sqlalchemy import create_engine
+from llama_index.core import SQLDatabase, VectorStoreIndex, Settings
 from llama_index.core.objects import ObjectIndex, SQLTableNodeMapping, SQLTableSchema
 from llama_index.core.indices.struct_store import SQLTableRetrieverQueryEngine
-from llama_index.core import VectorStoreIndex
-from llama_index.core import SQLDatabase
-from llama_index.core import ServiceContext
 from llama_index.embeddings.bedrock import BedrockEmbedding
-from llama_index.core.prompts import Prompt
+from llama_index.core.prompts import PromptTemplate, Prompt
+from llama_index.core.schema import TextNode
 from connections import Connections
 from prompt_templates import SQL_TEMPLATE_STR, RESPONSE_TEMPLATE_STR, table_details
-from llama_index.core.schema import TextNode
-from llama_index.core.prompts import PromptTemplate
 import csv
 import json
-
 import logging
 
 # Set up logging
@@ -52,9 +48,7 @@ def get_few_shot_retriever(FEWSHOT_EXAMPLES_PATH):
         data_dict (dict): Dictionary with fewshot examples.
     """
     with open(FEWSHOT_EXAMPLES_PATH, newline="", encoding="utf-8-sig") as csvfile:
-        # with StringIO(file_content) as file_like_object:
         reader = csv.DictReader(csvfile)
-        data, data_dict, few_shot_nodes = [], {}, []
         data, data_dict, few_shot_nodes = [], {}, []
         for row in reader:
             data.append(row["example_input_question"])
@@ -67,13 +61,10 @@ def get_few_shot_retriever(FEWSHOT_EXAMPLES_PATH):
         client=Connections.bedrock_client, model_name="amazon.titan-embed-text-v1"
     )
 
-    few_shot_service_context = ServiceContext.from_defaults(
-        embed_model=embed_model, llm=None
-    )
+    # Update settings instead of using ServiceContext
+    Settings.embed_model = embed_model
 
-    few_shot_index = VectorStoreIndex(
-        few_shot_nodes, service_context=few_shot_service_context
-    )
+    few_shot_index = VectorStoreIndex(few_shot_nodes)
     few_shot_retriever = few_shot_index.as_retriever(similarity_top_k=2)
     return few_shot_retriever, data_dict
 
@@ -124,7 +115,7 @@ RESPONSE_PROMPT = Prompt(RESPONSE_TEMPLATE_STR)
 def create_query_engine(
     model_name="ClaudeInstant", SQL_PROMPT=SQL_PROMPT, RESPONSE_PROMPT=RESPONSE_PROMPT
 ):
-    """Generates a query engine and object index fo answering questions using SQL retrieval.
+    """Generates a query engine and object index for answering questions using SQL retrieval.
 
     Args:
         model_name (str): Model to use. Defaults to "ClaudeInstant".
@@ -139,16 +130,19 @@ def create_query_engine(
     engine = create_sql_engine()
     sql_database = SQLDatabase(engine, sample_rows_in_table_info=2)
 
+    # Set up embeddings and LLM
     embed_model = BedrockEmbedding(
         client=Connections.bedrock_client, model_name="amazon.titan-embed-text-v1"
     )
-
+    
     # initialize llm
     llm = Connections.get_bedrock_llm(model_name=model_name, max_tokens=1024)
 
-    # initialize service context
-    service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
+    # Update global settings instead of using ServiceContext
+    Settings.embed_model = embed_model
+    Settings.llm = llm
 
+    # Create table node mapping and schema objects
     table_node_mapping = SQLTableNodeMapping(sql_database)
     table_schema_objs = []
     tables = list(sql_database._all_tables)
@@ -157,17 +151,17 @@ def create_query_engine(
             (SQLTableSchema(table_name=table, context_str=table_details[table]))
         )
 
+    # Create the object index
     obj_index = ObjectIndex.from_objects(
         table_schema_objs,
         table_node_mapping,
         VectorStoreIndex,
-        service_context=service_context,
     )
 
+    # Create the query engine
     query_engine = SQLTableRetrieverQueryEngine(
         sql_database,
         obj_index.as_retriever(similarity_top_k=5),
-        service_context=service_context,
         text_to_sql_prompt=SQL_PROMPT,
         response_synthesis_prompt=RESPONSE_PROMPT,
     )
