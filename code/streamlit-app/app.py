@@ -24,7 +24,7 @@ lambda_client = Connections.lambda_client
 
 
 # agent_id = Connections.agent_id
-# get unique sesion id
+# get unique session id
 def get_response(user_input, session_id):
     """
     Get response from genai Lambda

@@ -134,3 +134,4 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+cdk.context.json

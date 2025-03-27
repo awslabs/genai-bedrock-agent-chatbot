@@ -43,8 +43,7 @@ class CodeStack(Stack):
         config = self.get_config()
         logging_context = config["logging"]
         kms_key = self.create_kms_key()
-        agent_assets_bucket, athena_bucket = self.create_data_source_bucket(
-            kms_key)
+        agent_assets_bucket, athena_bucket = self.create_data_source_bucket(kms_key)
         self.upload_files_to_s3(agent_assets_bucket, athena_bucket, kms_key)
 
         self.lambda_runtime = lambda_.Runtime.PYTHON_3_12
@@ -424,14 +423,20 @@ class CodeStack(Stack):
         policy_statements = [
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["bedrock:InvokeModel"],
+                actions=[
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                    "bedrock:GetInferenceProfile",
+                    "bedrock:GetFoundationModel",
+                ],
                 resources=[
-                    # f"arn:aws:bedrock:${Aws.REGION}:${Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
                     f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0",
                     f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-v2",
                     f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-v2:1",
                     f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-instant-v1",
                     f"arn:aws:bedrock:{Aws.REGION}::foundation-model/amazon.titan-embed-text-v1",
+                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0",
                 ],
             ),
             iam.PolicyStatement(
@@ -503,8 +508,7 @@ class CodeStack(Stack):
         )
 
         # Attach the custom policy to the role
-        create_index_lambda_execution_role.add_to_policy(
-            opensearch_policy_statement)
+        create_index_lambda_execution_role.add_to_policy(opensearch_policy_statement)
 
         # get the role arn
         create_index_lambda_execution_role_arn = (
