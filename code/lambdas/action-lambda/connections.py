@@ -13,12 +13,15 @@ class Connections:
     bedrock_client = boto3.client("bedrock-runtime", region_name=region_name)
 
     @staticmethod
-    def get_bedrock_llm(model_name="ClaudeInstant", max_tokens=256):
+    def get_bedrock_llm(model_name="Claude3Haiku", max_tokens=256):
         MODELID_MAPPING = {
             "Titan": "amazon.titan-tg1-large",
             "Jurassic": "ai21.j2-ultra-v1",
             "Claude2": "anthropic.claude-v2",
             "ClaudeInstant": "anthropic.claude-instant-v1",
+            "Claude3Opus": "anthropic.claude-3-opus-20240229",
+            "Claude3Sonnet": "anthropic.claude-3-sonnet-20240229",
+            "Claude3Haiku": "anthropic.claude-3-haiku-20240307",
         }
 
         MODEL_KWARGS_MAPPING = {
@@ -35,6 +38,18 @@ class Connections:
                 "temperature": 0,
             },
             "ClaudeInstant": {
+                "max_tokens": max_tokens,
+                "temperature": 0,
+            },
+            "Claude3Opus": {
+                "max_tokens": max_tokens,
+                "temperature": 0,
+            },
+            "Claude3Sonnet": {
+                "max_tokens": max_tokens,
+                "temperature": 0,
+            },
+            "Claude3Haiku": {
                 "max_tokens": max_tokens,
                 "temperature": 0,
             },

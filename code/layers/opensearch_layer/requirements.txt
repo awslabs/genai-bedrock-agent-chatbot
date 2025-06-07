@@ -1,2 +1,2 @@
-opensearch-py
-requests_aws4auth
+opensearch-py>=2.4.0
+requests_aws4auth>=1.2.3

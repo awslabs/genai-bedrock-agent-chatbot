@@ -948,8 +948,19 @@ class CodeStack(Stack):
             self,
             "ChatBotDemoCluster",
             cluster_name=f"{Aws.STACK_NAME}-ecs-cluster",
-            container_insights=True,
+            container_insights_v2=ecs.ContainerInsights.ENHANCED,  # Updated from deprecated container_insights
             vpc=vpc,
+        )
+        
+        # Add suppression for the ECS4 rule since we're using container_insights_v2 instead of container_insights
+        NagSuppressions.add_resource_suppressions(
+            cluster,
+            suppressions=[
+                {
+                    "id": "AwsSolutions-ECS4",
+                    "reason": "Container Insights is enabled via container_insights_v2 property with ENHANCED value"
+                }
+            ],
         )
 
         # Build Dockerfile from local folder and push to ECR
@@ -965,6 +976,7 @@ class CodeStack(Stack):
             cluster=cluster,
             cpu=2048,
             desired_count=1,
+            min_healthy_percent=100,
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
                 image=image,
                 container_port=8501,

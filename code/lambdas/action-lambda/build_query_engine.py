@@ -113,12 +113,12 @@ RESPONSE_PROMPT = Prompt(RESPONSE_TEMPLATE_STR)
 
 
 def create_query_engine(
-    model_name="ClaudeInstant", SQL_PROMPT=SQL_PROMPT, RESPONSE_PROMPT=RESPONSE_PROMPT
+    model_name="Claude3Haiku", SQL_PROMPT=SQL_PROMPT, RESPONSE_PROMPT=RESPONSE_PROMPT
 ):
     """Generates a query engine and object index for answering questions using SQL retrieval.
 
     Args:
-        model_name (str): Model to use. Defaults to "ClaudeInstant".
+        model_name (str): Model to use. Defaults to "Claude3Haiku".
         SQL_PROMPT (PromptTemplate): Prompt for generating SQL. Defaults to SQL_PROMPT.
         RESPONSE_PROMPT (Prompt): Prompt for generating final response. Defaults to RESPONSE_PROMPT.
 
