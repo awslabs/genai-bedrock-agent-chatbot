@@ -15,11 +15,11 @@ Here is the API schema for this lambda:
 
 #### Prerequisites (requirements.txt)
 
-- boto3==1.34.37
-- llama-index==0.10.6
-- llama-index-embeddings-bedrock==0.1.3
-- llama-index-llms-bedrock==0.1.3
-- sqlalchemy==2.0.23
+- boto3==1.36.1
+- llama-index==0.13.0
+- llama-index-embeddings-bedrock==0.7.0
+- llama-index-llms-bedrock==0.4.2
+- sqlalchemy==2.0.41
 - PyAthena[SQLAlchemy]
 
 #### Technology stack
