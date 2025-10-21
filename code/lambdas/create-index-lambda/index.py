@@ -109,7 +109,7 @@ def lambda_handler(event, context):
                 },
             }
 
-            response = client.indices.create(index_name, body=index_body)
+            response = client.indices.create(index=index_name, body=index_body)
 
             log(f"Response: {response}")
 
@@ -120,7 +120,7 @@ def lambda_handler(event, context):
 
         elif event["RequestType"] == "Delete":
             log(f"Deleting index: {index_name}")
-            response = client.indices.delete(index_name)
+            response = client.indices.delete(index=index_name)
             log(f"Response: {response}")
         else:
             log("Continuing without action.")
