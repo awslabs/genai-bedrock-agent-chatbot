@@ -7,9 +7,14 @@
   - [Introduction](#introduction)
   - [Prerequisites](#prerequisites)
   - [Target technology stack](#target-technology-stack)
+  - [Architecture](#architecture)
   - [Deployment](#deployment)
+    - [Local development setup](#local-development-setup)
+    - [Deploy to AWS](#deploy-to-aws)
+    - [Cleanup](#cleanup)
   - [Useful CDK commands](#useful-cdk-commands)
   - [High-level Code Structure](#high-level-code-structure)
+  - [Models](#models)
   - [Customize the chatbot with your own data](#customize-the-chatbot-with-your-own-data)
     - [For Knowledgebase Data Integration](#for-knowledgebase-data-integration)
       - [1. Data Preparation](#1-data-preparation)
@@ -21,171 +26,186 @@
 
 ## Introduction
 
-This GenAI ChatBot application was built with Amazon Bedrock, which includes KnowledgeBase, Agent, and additional AWS serverless GenAI solutions. The provided solution showcases a Chatbot that makes use of its understanding of EC2 instances and the pricing of EC2 instances. This chatbot functions as an illustration of the capabilities of Amazon Bedrock to convert natural language into Amazon Athena queries and to process and utilize complex data sets. Open source tools, such as LLamaIndex, are utilized to augment the system's capabilities for data processing and retrieval. The integration of several AWS resources is also emphasized in the solution. These resources consist of Amazon S3 for storage, Amazon Bedrock KnowledgeBase to facilitate retrieval augmented generation (RAG), Amazon Bedrock agent to execute multi-step tasks across data sources, AWS Glue to prepare data, Amazon Athena to execute efficient queries, Amazon Lambda to manage containers, and Amazon ECS to oversee containers. The combined utilization of these resources empowers the Chatbot to efficiently retrieve and administer content from databases and documents, thereby demonstrating the capabilities of Amazon Bedrock in the development of advanced Chatbot applications.
+This GenAI ChatBot application is built with Amazon Bedrock, including KnowledgeBase, Agent, and additional AWS serverless GenAI solutions. The solution showcases a Chatbot that understands EC2 instances and their pricing. It demonstrates Amazon Bedrock's capabilities to convert natural language into Amazon Athena queries and to process complex data sets.
+
+LlamaIndex is used for data processing and text-to-SQL retrieval. The solution integrates:
+
+- **Amazon S3** for storage
+- **Amazon Bedrock KnowledgeBase** for retrieval augmented generation (RAG)
+- **Amazon Bedrock Agent** to execute multi-step tasks across data sources
+- **AWS Glue** to prepare data
+- **Amazon Athena** to execute efficient queries
+- **AWS Lambda** for serverless compute
+- **Amazon ECS** with Fargate for the Streamlit frontend
+- **Amazon OpenSearch Serverless** as the vector database for the KnowledgeBase
 
 ## Prerequisites
 
 - Docker
-- AWS CDK Toolkit 2.114.1+, installed installed and configured. For more information, see Getting started with the AWS CDK in the AWS CDK documentation.
-- Python 3.11+, installed and configured. For more information, see Beginners Guide/Download in the Python documentation.
+- AWS CDK Toolkit 2.240.0+, installed and configured. For more information, see [Getting started with the AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html).
+- Python 3.13+, installed and configured. For more information, see [Python Downloads](https://www.python.org/downloads/).
 - An active AWS account
-- An AWS account bootstrapped by using AWS CDK in us-east-1 or us-west-2. Enable Claude Sonnet 4.6, Claude Sonnet 4.5, Claude Haiku 4.5, and Titan Embedding model access in Bedrock service.
+- An AWS account bootstrapped by using AWS CDK in `us-east-1` or `us-west-2`
+- Enable the following model access in Amazon Bedrock:
+  - **Claude Sonnet 4.6** (Agent foundation model and text-to-SQL)
+  - **Claude Sonnet 4.5** (available as alternative)
+  - **Claude Haiku 4.5** (available as alternative)
+  - **Titan Embedding Text v1** (KnowledgeBase embeddings)
 
 ## Target technology stack
 
-- Amazon Bedrock
+- Amazon Bedrock (Agent, KnowledgeBase)
 - Amazon OpenSearch Serverless
-- Amazon ECS
+- Amazon ECS (Fargate)
 - AWS Glue
-- AWS Lambda
+- AWS Lambda (Python 3.13)
 - Amazon S3
 - Amazon Athena
 - Elastic Load Balancer
 
+## Architecture
+
+The chatbot uses two data paths:
+
+1. **Qualitative questions** (e.g., "What is Amazon EC2?") → Bedrock Agent routes to KnowledgeBase → RAG over EC2 User Guide documentation stored in OpenSearch Serverless
+2. **Quantitative questions** (e.g., "What is the cheapest EC2 instance?") → Bedrock Agent routes to Action Group → Lambda converts natural language to SQL via LlamaIndex → Athena queries EC2 pricing data
+
+The Streamlit frontend runs on ECS Fargate behind an Application Load Balancer and invokes the Bedrock Agent through a Lambda function.
+
 ## Deployment
 
-To run the app locally, first add a .env file to 'code/streamlit-app' folder containing the following
+### Local development setup
+
+Add a `.env` file to `code/streamlit-app/` folder:
 
 ```.env
 ACCOUNT_ID = <Your account ID>
 AWS_REGION = <Your region>
-LAMBDA_FUNCTION_NAME =  invokeAgentLambda # Sets name of choice for the lambda function called by streamlit for a response. Currently invokes an agent.
+LAMBDA_FUNCTION_NAME = invokeAgentLambda
 ```
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+### Deploy to AWS
 
-This project is set up like a standard Python project. The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory. To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
-
-To manually create a virtualenv on MacOS and Linux:
+Create and activate a virtual environment:
 
 ```bash
-$ python3 -m venv .venv
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+Install dependencies:
 
 ```bash
-$ source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-If you are a Windows platform, you would activate the virtualenv like this:
-
-```powershell
-% .venv\Scripts\activate.bat
-```
-
-Once the virtualenv is activated, you can install the required dependencies.
+Bootstrap (first time only):
 
 ```bash
-$ pip install -r requirements.txt
+cdk bootstrap
 ```
 
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
-
-At this point you can now synthesize the CloudFormation template for this code.
+Synthesize and deploy:
 
 ```bash
-$ cdk synth
+cdk synth
+cdk deploy
 ```
 
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
+The first deployment takes approximately 30-45 minutes to build Docker images. Subsequent deployments take about 5-8 minutes.
 
-You will need to bootstrap it if this is your first time running cdk at a particular account and region.
+Once deployed, access the chatbot via the Streamlit app URL in the CloudFormation stack outputs.
+
+### Cleanup
 
 ```bash
-$ cdk bootstrap
+cdk destroy
 ```
 
-Once it's bootstrapped, you can proceed to deploy cdk.
-
-```bash
-$ cdk deploy
-```
-
-If this is your first time deploying it, the process may take approximately 30-45 minutes to build several Docker images in ECS (Amazon Elastic Container Service). Please be patient until it's completed. Afterward, it will start deploying the chatbot-stack, which typically takes about 5-8 minutes.
-
-Once the deployment process is complete, you will see the output of the cdk in the terminal, and you can also verify the status in your CloudFormation console.
-
-You can either test the agent in AWS console or through streamlit app url listed in the outputs of chatbot-stack in CloudFormation.
-
-To delete the cdk once you have finished using it to avoid future costs, you can either delete it through the console or execute the following command in the terminal.
-
-```bash
-$ cdk destroy
-```
-
-You may also need to manually delete the S3 bucket generated by the cdk. Please ensure to delete all the generated resources to avoid incurring costs.
+You may also need to manually delete the S3 buckets generated by the CDK.
 
 ## Useful CDK commands
 
-- `cdk ls` list all stacks in the app
-- `cdk synth` emits the synthesized CloudFormation template
-- `cdk deploy` deploy this stack to your default AWS account/region
-- `cdk diff` compare deployed stack with current state
-- `cdk docs` open CDK documentation
-- `cdk destroy` dstroys one or more specified stacks
+- `cdk ls` — list all stacks in the app
+- `cdk synth` — emit the synthesized CloudFormation template
+- `cdk deploy` — deploy this stack to your default AWS account/region
+- `cdk diff` — compare deployed stack with current state
+- `cdk docs` — open CDK documentation
+- `cdk destroy` — destroy one or more specified stacks
 
 ## High-level Code Structure
 
+```text
+.
+├── app.py                            # CDK app entry point
+├── cdk.json                          # CDK configuration and context
+├── requirements.txt                  # CDK Python dependencies
+├── assets/
+│   ├── agent_api_schema/             # Bedrock Agent OpenAPI schema
+│   ├── agent_prompts/                # Agent prompt templates
+│   ├── data_query_data_source/       # EC2 pricing CSV data for Athena
+│   ├── knowledgebase_data_source/    # EC2 User Guide docs for RAG
+│   └── diagrams/                     # Architecture diagrams
+└── code/
+    ├── code_stack.py                 # CDK stack definition (all AWS resources)
+    ├── lambdas/
+    │   ├── action-lambda/            # Text-to-SQL via LlamaIndex (Docker, Python 3.13)
+    │   ├── create-index-lambda/      # Creates OpenSearch Serverless index
+    │   ├── invoke-lambda/            # Invokes Bedrock Agent (called by Streamlit)
+    │   └── update-lambda/            # Post-deployment: Glue crawler, KB sync, agent alias
+    ├── layers/
+    │   ├── boto3_layer/              # Shared boto3 layer (v1.42.56)
+    │   └── opensearch_layer/         # OpenSearch client layer (v3.1.0+)
+    └── streamlit-app/                # Streamlit frontend (Docker, Python 3.13-slim)
 ```
-code                              # Root folder for code for this solution
-├── lambdas                           # Root folder for all lambda functions
-│   ├── action-lambda                     # Lambda function that acts as an action for the Amazon Bedrock Agent
-│   ├── create-index-lambda               # Lambda function that create Amazon Opensearch serverless index as Amazon Bedrock Knowlege base's vector database
-│   ├── invoke-lambda                     # Lambda function that invokes Amazon Bedrock Agent, which is called diretly from the streamlit app
-│   └── update-lambda                     # Lambda function that update/delete resources after AWS resources deployed via AWS CDK.
-├── layers                            # Root folder for all lambda layers
-│   ├── boto3_layer                       # Boto3 layer that is shared across all lambdas
-│   └── opensearch_layer                  # opensearh layer that installs all dependencies for create Amazon Opensearch serverless index.
-├── streamlit-app                         # Steamlit app that interacts with the Amazon Bedrock Agent
-└── code_stack.py                     # Amazon CDK stack that deploys all AWS resources
-```
+
+## Models
+
+The application uses the following Amazon Bedrock models:
+
+| Component                   | Model                   | Model ID / Inference Profile     |
+| --------------------------- | ----------------------- | -------------------------------- |
+| Bedrock Agent               | Claude Sonnet 4.6       | `us.anthropic.claude-sonnet-4-6` |
+| Text-to-SQL (Action Lambda) | Claude Sonnet 4.6       | `us.anthropic.claude-sonnet-4-6` |
+| KnowledgeBase Embeddings    | Titan Embedding Text v1 | `amazon.titan-embed-text-v1`     |
+
+Claude Sonnet 4.5 and 4.6 are cross-region inference only — they require inference profile IDs (prefixed with `us.`) rather than raw model IDs.
+
+Available model alternatives in `code/lambdas/action-lambda/connections.py`:
+
+- `Sonnet46` — Claude Sonnet 4.6 (default)
+- `Sonnet45` — Claude Sonnet 4.5
+- `Haiku45` — Claude Haiku 4.5
 
 ## Customize the chatbot with your own data
-
-To integrate your custom data for deploying the solution, please follow these structured guidelines tailored to your requirements:
 
 ### For Knowledgebase Data Integration
 
 #### 1. Data Preparation
 
-- Locate the `assets/knowledgebase_data_source/` directory.
-- Place your dataset within this folder.
+- Place your dataset in the `assets/knowledgebase_data_source/` directory.
 
 #### 2. Configuration Adjustments
 
-- Access the `cdk.json` file.
-- Navigate to the `context/configure/paths/knowledgebase_file_name` field and update it accordingly.
-- Further, modify the `bedrock_instructions/knowledgebase_instruction` field in the `cdk.json` file to accurately reflect the nuances and context of your new dataset.
+- Update `cdk.json` → `context/config/paths/knowledgebase_file_name` with your filename.
+- Update `cdk.json` → `context/config/bedrock_instructions/knowledgebase_instruction` to reflect your dataset.
 
 ### For Structural Data Integration
 
 #### 1. Data Organization
 
-- Within the `assets/data_query_data_source/` directory, create a subdirectory, for example, tabular_data.
-- Deposit your structured dataset (acceptable formats include **CSV**, **JSON**, **ORC**, and **Parquet**) into this newly created subfolder.
-- If you are connecting to your **existing database**, update the function `create_sql_engine()` in `code/lambda/action-lambda/build_query_engine.py` to connect to your database.
+- Create a subdirectory in `assets/data_query_data_source/` (e.g., `tabular_data`).
+- Place your structured dataset (CSV, JSON, ORC, or Parquet) in the subdirectory.
+- To connect to an existing database, update `create_sql_engine()` in `code/lambdas/action-lambda/build_query_engine.py`.
 
 #### 2. Configuration and Code Updates
 
-- Update the `cdk.json` file's `context/configure/paths/athena_table_data_prefix` field to align with the new data path.
-- Revise `code/lambda/action-lambda/dynamic_examples.csv` by incorporating new text to SQL examples that correspond with your dataset.
-- Revise `code/lambda/action-lambda/prompt_templates.py` to mirror the attributes of your new tabular data.
-- Modify the `cdk.json` file's `context/configure/bedrock_instructions/action_group_description` field to elucidate the purpose and functionality of the action lambda tailored for your dataset.
-- Reflect the new functionalities of your action lambda in the `assets/agent_api_schema/artifacts_schema.json` file.
+- Update `cdk.json` → `context/config/paths/athena_table_data_prefix` to match your data path.
+- Update `code/lambdas/action-lambda/dynamic_examples.csv` with text-to-SQL examples for your dataset.
+- Update `code/lambdas/action-lambda/prompt_templates.py` to reflect your table schema.
+- Update `cdk.json` → `context/config/bedrock_instructions/action_group_description` for your action lambda.
+- Update `assets/agent_api_schema/artifacts_schema.json` to reflect your action lambda's API.
 
 ### General Update
 
-- In the `cdk.json` file, under the `context/configure/bedrock_instructions/agent_instruction section`, provide a comprehensive description of the Amazon Bedrock Agent's intended functionality and design purpose, taking into account the newly integrated data.
-
-These steps are designed to ensure a seamless and efficient integration process, enabling you to deploy the solution effectively with your bespoke data.
+- Update `cdk.json` → `context/config/bedrock_instructions/agent_instruction` with a description of the agent's purpose for your use case.
