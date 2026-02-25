@@ -124,8 +124,8 @@ def show_message():
                 source = f"_{source}_"
             # else:
             #     source = source.replace('\n', '\n\n')
-            source_title = "\n\n **Source**:" + "\n\n" + response_output["source"]
-            answer = "**Answer**: \n\n" + response_output["answer"]
+            source_title = "\n\n **Source**:" + "\n\n" + str(response_output.get("source", ""))
+            answer = "**Answer**: \n\n" + str(response_output.get("answer", "No response received."))
             st.session_state.questions.append(user_input)
             st.session_state.answers.append(answer + source_title)
 

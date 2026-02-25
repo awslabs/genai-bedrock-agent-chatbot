@@ -12,58 +12,26 @@ class Connections:
     s3_resource = boto3.resource("s3", region_name=region_name)
     bedrock_client = boto3.client("bedrock-runtime", region_name=region_name)
 
+    # Cross-region inference profile IDs required for Claude 4.x models (no on-demand single-region support)
+    MODELID_MAPPING = {
+        "Sonnet46": ("us.anthropic.claude-sonnet-4-6", 200000),
+        "Sonnet45": ("us.anthropic.claude-sonnet-4-5-20250929-v1:0", 200000),
+        "Haiku45": ("us.anthropic.claude-haiku-4-5-20251001-v1:0", 200000),
+        "Titan": ("amazon.titan-tg1-large", 8000),
+    }
+
     @staticmethod
-    def get_bedrock_llm(model_name="Claude3Haiku", max_tokens=256):
-        MODELID_MAPPING = {
-            "Titan": "amazon.titan-tg1-large",
-            "Jurassic": "ai21.j2-ultra-v1",
-            "Claude2": "anthropic.claude-v2",
-            "ClaudeInstant": "anthropic.claude-instant-v1",
-            "Claude3Opus": "anthropic.claude-3-opus-20240229",
-            "Claude3Sonnet": "anthropic.claude-3-sonnet-20240229",
-            "Claude3Haiku": "anthropic.claude-3-haiku-20240307",
-        }
+    def get_bedrock_llm(model_name="Sonnet46", max_tokens=256):
+        entry = Connections.MODELID_MAPPING.get(model_name)
+        if not entry:
+            raise ValueError(f"Unknown model: {model_name}. Available: {list(Connections.MODELID_MAPPING.keys())}")
 
-        MODEL_KWARGS_MAPPING = {
-            "Titan": {
-                "max_tokens": max_tokens,
-                "temperature": 0,
-            },
-            "Jurassic": {
-                "max_tokens": max_tokens,
-                "temperature": 0,
-            },
-            "Claude2": {
-                "max_tokens": max_tokens,
-                "temperature": 0,
-            },
-            "ClaudeInstant": {
-                "max_tokens": max_tokens,
-                "temperature": 0,
-            },
-            "Claude3Opus": {
-                "max_tokens": max_tokens,
-                "temperature": 0,
-            },
-            "Claude3Sonnet": {
-                "max_tokens": max_tokens,
-                "temperature": 0,
-            },
-            "Claude3Haiku": {
-                "max_tokens": max_tokens,
-                "temperature": 0,
-            },
-        }
-        model_kwargs = MODEL_KWARGS_MAPPING[model_name].copy()
-        model_kwargs = MODEL_KWARGS_MAPPING[model_name].copy()
-
-        model_kwargs.update(
-            {
-                "model": MODELID_MAPPING[model_name],
-                "aws_region_name": Connections.region_name,
-            }
+        model_id, context_size = entry
+        llm = Bedrock(
+            model=model_id,
+            aws_region_name=Connections.region_name,
+            max_tokens=max_tokens,
+            temperature=0,
+            context_size=context_size,
         )
-
-        llm = Bedrock(**model_kwargs)
-
         return llm

@@ -46,7 +46,7 @@ class CodeStack(Stack):
         agent_assets_bucket, athena_bucket = self.create_data_source_bucket(kms_key)
         self.upload_files_to_s3(agent_assets_bucket, athena_bucket, kms_key)
 
-        self.lambda_runtime = lambda_.Runtime.PYTHON_3_12
+        self.lambda_runtime = lambda_.Runtime.PYTHON_3_13
         boto3_layer = self.create_lambda_layer("boto3_layer")
         opensearch_layer = self.create_lambda_layer("opensearch_layer")
 
@@ -430,13 +430,12 @@ class CodeStack(Stack):
                     "bedrock:GetFoundationModel",
                 ],
                 resources=[
-                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0",
-                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-v2",
-                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-v2:1",
-                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/anthropic.claude-instant-v1",
+                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-sonnet-4-6",
+                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6",
+                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
                     f"arn:aws:bedrock:{Aws.REGION}::foundation-model/amazon.titan-embed-text-v1",
-                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0",
                 ],
             ),
             iam.PolicyStatement(

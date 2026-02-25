@@ -209,14 +209,19 @@ def lambda_handler(event, context):
 
     body = event["body"]
 
-    streaming_response = invoke_agent(body["query"], body["session_id"])
-    response, source_file_list = get_agent_response(streaming_response)
-    if isinstance(source_file_list, list):
-        reference_str = source_link(source_file_list)
-    else:
-        reference_str = source_file_list
+    try:
+        streaming_response = invoke_agent(body["query"], body["session_id"])
+        response, source_file_list = get_agent_response(streaming_response)
+        if isinstance(source_file_list, list):
+            reference_str = source_link(source_file_list)
+        else:
+            reference_str = source_file_list
+    except Exception as e:
+        log(f"Error invoking agent: {e}")
+        return {"answer": f"An error occurred while processing your request: {str(e)}", "source": ""}
+
     print(f"reference_str: {reference_str}")
 
-    output = {"answer": response, "source": reference_str}
+    output = {"answer": response, "source": reference_str or ""}
 
     return output

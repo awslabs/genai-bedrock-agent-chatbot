@@ -39,6 +39,6 @@ def show_footer() -> None:
 
     st.markdown("---")
     st.markdown(
-        "<div style='text-align: right'> © 2023 Amazon Web Services </div>",
+        "<div style='text-align: right'> © 2025 Amazon Web Services </div>",
         unsafe_allow_html=True,
     )

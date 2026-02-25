@@ -2,13 +2,22 @@
 
 ## Table of Contents
 
-- [Introduction](#Introduction)
-- [Prerequisites](#Prerequisites)
-- [Target technology stack](#Target-technology-stack)
-- [Deployment](#Deployment)
-- [Useful CDK commands](#Useful-CDK-commands)
-- [Code Structure](#Code-Structure)
-- [Customize the chatbot with your own data](#Customize-the-chatbot-with-your-own-data)
+- [GenAI ChatBot with Amazon Bedrock Agent](#genai-chatbot-with-amazon-bedrock-agent)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Prerequisites](#prerequisites)
+  - [Target technology stack](#target-technology-stack)
+  - [Deployment](#deployment)
+  - [Useful CDK commands](#useful-cdk-commands)
+  - [High-level Code Structure](#high-level-code-structure)
+  - [Customize the chatbot with your own data](#customize-the-chatbot-with-your-own-data)
+    - [For Knowledgebase Data Integration](#for-knowledgebase-data-integration)
+      - [1. Data Preparation](#1-data-preparation)
+      - [2. Configuration Adjustments](#2-configuration-adjustments)
+    - [For Structural Data Integration](#for-structural-data-integration)
+      - [1. Data Organization](#1-data-organization)
+      - [2. Configuration and Code Updates](#2-configuration-and-code-updates)
+    - [General Update](#general-update)
 
 ## Introduction
 
@@ -20,7 +29,7 @@ This GenAI ChatBot application was built with Amazon Bedrock, which includes Kno
 - AWS CDK Toolkit 2.114.1+, installed installed and configured. For more information, see Getting started with the AWS CDK in the AWS CDK documentation.
 - Python 3.11+, installed and configured. For more information, see Beginners Guide/Download in the Python documentation.
 - An active AWS account
-- An AWS account bootstrapped by using AWS CDK in us-east-1 or us-west-2. Enable Claude model and Titan Embedding model access in Bedrock service.
+- An AWS account bootstrapped by using AWS CDK in us-east-1 or us-west-2. Enable Claude Sonnet 4.6, Claude Sonnet 4.5, Claude Haiku 4.5, and Titan Embedding model access in Bedrock service.
 
 ## Target technology stack
 
@@ -146,28 +155,28 @@ code                              # Root folder for code for this solution
 
 To integrate your custom data for deploying the solution, please follow these structured guidelines tailored to your requirements:
 
-### For Knowledgebase Data Integration:
+### For Knowledgebase Data Integration
 
-#### 1. Data Preparation:
+#### 1. Data Preparation
 
 - Locate the `assets/knowledgebase_data_source/` directory.
 - Place your dataset within this folder.
 
-#### 2. Configuration Adjustments:
+#### 2. Configuration Adjustments
 
 - Access the `cdk.json` file.
 - Navigate to the `context/configure/paths/knowledgebase_file_name` field and update it accordingly.
 - Further, modify the `bedrock_instructions/knowledgebase_instruction` field in the `cdk.json` file to accurately reflect the nuances and context of your new dataset.
 
-### For Structural Data Integration:
+### For Structural Data Integration
 
-#### 1. Data Organization:
+#### 1. Data Organization
 
 - Within the `assets/data_query_data_source/` directory, create a subdirectory, for example, tabular_data.
 - Deposit your structured dataset (acceptable formats include **CSV**, **JSON**, **ORC**, and **Parquet**) into this newly created subfolder.
 - If you are connecting to your **existing database**, update the function `create_sql_engine()` in `code/lambda/action-lambda/build_query_engine.py` to connect to your database.
 
-#### 2. Configuration and Code Updates:
+#### 2. Configuration and Code Updates
 
 - Update the `cdk.json` file's `context/configure/paths/athena_table_data_prefix` field to align with the new data path.
 - Revise `code/lambda/action-lambda/dynamic_examples.csv` by incorporating new text to SQL examples that correspond with your dataset.
@@ -175,7 +184,7 @@ To integrate your custom data for deploying the solution, please follow these st
 - Modify the `cdk.json` file's `context/configure/bedrock_instructions/action_group_description` field to elucidate the purpose and functionality of the action lambda tailored for your dataset.
 - Reflect the new functionalities of your action lambda in the `assets/agent_api_schema/artifacts_schema.json` file.
 
-### General Update:
+### General Update
 
 - In the `cdk.json` file, under the `context/configure/bedrock_instructions/agent_instruction section`, provide a comprehensive description of the Amazon Bedrock Agent's intended functionality and design purpose, taking into account the newly integrated data.
 

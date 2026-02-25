@@ -1,5 +1,5 @@
-aws-cdk-lib>=2.200.0
+aws-cdk-lib>=2.240.0
 constructs>=10.3.0,<11.0.0
-cdk-nag>=2.36.12
-aws-cdk.aws-lambda-python-alpha>=2.200.0a0
+cdk-nag>=2.37.55
+aws-cdk.aws-lambda-python-alpha>=2.240.0a0
 bedrock-agent>=0.0.11
