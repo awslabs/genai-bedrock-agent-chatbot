@@ -7,5 +7,5 @@ COPY images/ ./images/
 EXPOSE 8501
 HEALTHCHECK --interval=600s --timeout=2s --retries=12 \
     CMD ["curl", "-f", "http://localhost:8501/"]
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.headless", "true", "--browser.serverAddress='0.0.0.0'", "--browser.gatherUsageStats", "false"]
 USER 1001
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.headless", "true", "--browser.serverAddress='0.0.0.0'", "--browser.gatherUsageStats", "false"]
