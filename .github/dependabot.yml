@@ -1,0 +1,92 @@
+# Dependabot configuration
+#
+# Repo-level "Dependabot security updates" only opens PRs once a dependency is
+# already known-vulnerable. This file adds scheduled *version* updates so
+# dependencies are kept current before an advisory lands, which is what allowed
+# the urllib3 and aws-cdk-lib floors to drift behind published advisories.
+#
+# Reference: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+
+updates:
+  # ---------------------------------------------------------------------------
+  # Python dependencies (one requirements.txt per directory)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: pip
+    directories:
+      - "/" # CDK app dependencies
+      - "/code/lambdas/action-lambda" # text-to-SQL Lambda (Docker image)
+      - "/code/layers/boto3_layer" # shared boto3 Lambda layer
+      - "/code/layers/opensearch_layer" # OpenSearch client Lambda layer
+      - "/code/streamlit-app" # Streamlit frontend (Docker image)
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: scope
+    groups:
+      # Keep aws-cdk-lib and its alpha modules in one PR: alpha module versions
+      # must track the aws-cdk-lib version they were built against.
+      aws-cdk:
+        patterns:
+          - "aws-cdk-lib"
+          - "aws-cdk.*"
+          - "constructs"
+          - "cdk-nag"
+      # llama-index ships as a meta-package plus many separately versioned
+      # integration packages; bumping them together avoids resolver conflicts.
+      llama-index:
+        patterns:
+          - "llama-index"
+          - "llama-index-*"
+      # Low-risk noise reduction: batch patch bumps for everything else.
+      patch-updates:
+        update-types:
+          - patch
+
+  # ---------------------------------------------------------------------------
+  # Container base images (pinned by digest; Dependabot bumps tag + digest)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: docker
+    directories:
+      - "/code/lambdas/action-lambda"
+      - "/code/streamlit-app"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions. No workflows exist today; this is a no-op until they are
+  # added, at which point third-party actions get pinned-version updates.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
