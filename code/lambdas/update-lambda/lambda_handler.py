@@ -2,6 +2,7 @@ from trigger_glue_crawler import trigger_glue_crawler
 from trigger_data_source_sync import trigger_data_source_sync
 from prepare_agent import prepare_bedrock_agent
 from create_agent_alias import create_bedrock_agent_alias
+from fix_agent_thinking_config import fix_agent_thinking_config
 from connections import Connections
 import cfnresponse
 
@@ -46,6 +47,12 @@ def lambda_handler(event, context):
             trigger_data_source_sync(bedrock_agent, knowledgebase_id, data_source_id)
             logger.info("Data Source Sync triggered successfully.")
 
+            # Correct the reasoning configuration before preparing, so the agent
+            # version captured by the alias carries the fix.
+            logger.info("Checking Bedrock Agent reasoning configuration.")
+            fix_agent_thinking_config(bedrock_agent, agent_id)
+            logger.info("Reasoning configuration check complete.")
+
             # Preapre Bedrock Agent
             logger.info("Starting Preparing Bedrock Agent.")
             prepare_bedrock_agent(bedrock_agent, agent_id)
@@ -59,8 +66,15 @@ def lambda_handler(event, context):
         elif event["RequestType"] == "Delete":
 
             response = bedrock_agent.list_agent_aliases(agentId=agent_id)
+            # Bedrock always returns the built-in test alias "TSTALIASID", which
+            # cannot be deleted -- DeleteAgentAlias rejects it with the constraint
+            # (?!\bTSTALIASID\b)[0-9a-zA-Z]+. Attempting it fails the custom
+            # resource and leaves the whole stack in DELETE_FAILED, orphaning
+            # resources. It is removed along with the agent itself.
             alias_ids = [
-                summary["agentAliasId"] for summary in response["agentAliasSummaries"]
+                summary["agentAliasId"]
+                for summary in response["agentAliasSummaries"]
+                if summary["agentAliasId"] != "TSTALIASID"
             ]
             logger.info(f"Deleting alias ids: {alias_ids}.")
 
