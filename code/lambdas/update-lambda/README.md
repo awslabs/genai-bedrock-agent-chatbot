@@ -6,16 +6,27 @@ This Lambda is triggered after the stack is deployed, it is to conduct the follo
 
 1. Trigger AWS Glue Crawler
 2. Data Source Sync
-3. Prepare Amazon Bedrock Agent
-4. Create Alias for Amazon Bedrock Agent
-5. Update Bedrock Agent Prompts (optional)
+3. Normalize the Amazon Bedrock Agent reasoning configuration for models that
+   require it
+4. Prepare Amazon Bedrock Agent
+5. Create Alias for Amazon Bedrock Agent
 6. Remove Agent resources on stack deletion
+
+Step 3 runs before step 4 deliberately. Bedrock Agents injects a default
+orchestration reasoning configuration of
+`{"thinking": {"type": "enabled", "budget_tokens": N}}`, which newer models
+reject at invoke time in favour of `"thinking.type.adaptive"`. The correction
+must be applied before the agent is prepared, because the agent version captured
+by the alias in step 5 is a snapshot — an alias pointing at a version created
+beforehand would keep serving the rejected configuration.
 
 ## Component Details
 
 #### Prerequisites
 
-- boto3==1.34.54
+Provided by the shared boto3 Lambda layer (`code/layers/boto3_layer`):
+
+- boto3==1.42.56
 
 #### Technology stack
 
@@ -23,17 +34,18 @@ This Lambda is triggered after the stack is deployed, it is to conduct the follo
 
 #### Package Details
 
-| Files                                                      | Description                                                                                                                                                                                                                                                                                              |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [agent_prompts.py](agent_prompts.py)                       | Python file containing default prompt templates that are leverage by Amazon Bedrock Agent. Users can use update it according to their needs                                                                                                                                                              |
-| [create_agent_alias.py](create_agent_alias.py)             | Python file that creates Amazon Bedrock Agent Alias after it's prepared database                                                                                                                                                                                                                         |
-| [prepare_agent.py](prepare_agent.py)                       | Python file that prepares Amazon Bedrock Agent after it's deployed via AWS CDK.                                                                                                                                                                                                                          |
-| [trigger_data_source_sync.py](trigger_data_source_sync.py) | Python file that triggers the data source sync between Amazon Bedrock Knowledge base and Amazon Opensearch Serverless vector index                                                                                                                                                                       |
-| [trigger_glue_crawler.py](trigger_glue_crawler.py)         | Python file that trigger AWS Glue crawler after it is deployed                                                                                                                                                                                                                                           |
-| [update_agent_prompts.py](update_agent_prompts.py)         | Python file that updates agent prompts using the templates from `agent_prompts.py` file                                                                                                                                                                                                                  |
-| [lambda_handler.py](lambda_handler.py)                     | Python file that contains lambda handler to trigger the actions listed above                                                                                                                                                                                                                             |
-| [cfnresponse.py](cfnresponse.py)                           | Python file that is designed for use within AWS Lambda functions that are part of AWS CloudFormation custom resources. The script includes a function named send that constructs and sends a response back to a CloudFormation stack to indicate the success or failure of the Lambda function execution |
-| [connections.py](connections.py)                           | Python file with `Connections` class for establishing connections with external dependencies of the lambda                                                                                                                                                                                               |
+| Files                                                                    | Description                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [create_agent_alias.py](create_agent_alias.py)                           | Python file that creates Amazon Bedrock Agent Alias after it's prepared database                                                                                                                                                                                                                          |
+| [fix_agent_thinking_config.py](fix_agent_thinking_config.py)             | Python file that replaces the agent's default orchestration reasoning configuration with the adaptive form, for foundation models that reject `"thinking.type.enabled"`                                                                                                                                   |
+| [prepare_agent.py](prepare_agent.py)                                     | Python file that prepares Amazon Bedrock Agent after it's deployed via AWS CDK.                                                                                                                                                                                                                          |
+| [trigger_data_source_sync.py](trigger_data_source_sync.py)               | Python file that triggers the data source sync between Amazon Bedrock Knowledge base and Amazon Opensearch Serverless vector index                                                                                                                                                                       |
+| [trigger_glue_crawler.py](trigger_glue_crawler.py)                       | Python file that trigger AWS Glue crawler after it is deployed                                                                                                                                                                                                                                           |
+| [lambda_handler.py](lambda_handler.py)                                   | Python file that contains lambda handler to trigger the actions listed above                                                                                                                                                                                                                             |
+| [cfnresponse.py](cfnresponse.py)                                         | Python file that is designed for use within AWS Lambda functions that are part of AWS CloudFormation custom resources. The script includes a function named send that constructs and sends a response back to a CloudFormation stack to indicate the success or failure of the Lambda function execution |
+| [connections.py](connections.py)                                         | Python file with `Connections` class for establishing connections with external dependencies of the lambda                                                                                                                                                                                               |
+
+Agent prompt templates live in [assets/agent_prompts](../../../assets/agent_prompts/), outside this lambda.
 
 #### Input
 

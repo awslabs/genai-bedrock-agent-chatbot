@@ -30,11 +30,27 @@ This application is deployed in Amazon ECS, AWS Fargate. There is one Applicatio
 
 | Field                  | Description                                                        | Data Type |
 | ---------------------- | ------------------------------------------------------------------ | --------- |
+| `ACCOUNT_ID`           | AWS account ID. If unset, it is resolved via STS                   | String    |
+| `AWS_REGION`           | AWS region. If unset, it is taken from the boto3 session           | String    |
 | `AGENT_ID`             | Set the Amazon Bedrock Agent id                                    | String    |
-| `LAMBDA_FUNCTION_NAME` | Set the lambda function name that invokes the Amazon Bedrock Agent | String    |
+| `LAMBDA_FUNCTION_NAME` | Set the lambda function name that invokes the Amazon Bedrock Agent. If unset, it is derived from `cdk.json` | String |
 | `LOG_LEVEL`            | Sets the log level config                                          | String    |
 
 ### Run Locally
+
+The app reaches its backend by calling the invoke lambda through the AWS API
+(`lambda:InvokeFunction`), not over the VPC network, so it runs locally against a
+deployed stack with nothing more than AWS credentials.
+
+Add a `.env` file in this directory:
+
+```.env
+ACCOUNT_ID = <Your account ID>
+AWS_REGION = <Your region>
+LAMBDA_FUNCTION_NAME = invokeAgentLambda
+```
+
+Then run:
 
 ```bash
 streamlit run app.py --server.runOnSave true --server.port 8504

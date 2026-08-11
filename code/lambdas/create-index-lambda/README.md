@@ -2,14 +2,38 @@
 
 ## Introduction
 
-This lambda is to create OpenSearch Collection with 'Vectorsearch' type.
-This collection serves as the 'Data Source' for Amazon Bedrock Knowledge base.
+This lambda creates the k-NN vector **index** inside the Amazon OpenSearch
+Serverless collection. The collection itself is created by CloudFormation
+(`AWS::OpenSearchServerless::Collection`); this lambda only manages the index
+within it. That index is the vector store backing the Amazon Bedrock Knowledge
+base (the Knowledge base *data source* is Amazon S3).
+
+It runs as a CloudFormation custom resource:
+
+- **Create / Update** — creates the index if it is absent. If the index already
+  exists with a different vector dimension, it is deleted and recreated, since
+  OpenSearch cannot change a k-NN field's dimension in place. Recreating drops
+  the stored vectors, so the Knowledge base data source is re-ingested
+  afterwards (the update lambda triggers a sync on every deployment). If the
+  dimension already matches, nothing is changed.
+- **Delete** — deletes the index.
+
+The vector dimension must match the embedding model's output vector size. Both
+are set in `cdk.json` under `context/config/models`
+(`bedrock_embedding_model` and `bedrock_embedding_dimension`), so they cannot
+drift apart.
 
 ## Component Details
 
 #### Prerequisites
 
-- boto3==1.34.57
+Provided by the OpenSearch Lambda layer (`code/layers/opensearch_layer`):
+
+- opensearch-py>=3.1.0
+- requests_aws4auth>=1.3.1
+- urllib3>=2.7.0
+
+`boto3` is provided by the Lambda Python runtime.
 
 #### Technology stack
 
@@ -61,4 +85,5 @@ This lambda generates the following output
 | `COLLECTION_HOST`   | Set the Amazon OpenSearch connection host                             | String    |
 | `VECTOR_INDEX_NAME` | Sets vector index name such as `bedrock-knowledgebase-index`          | String    |
 | `VECTOR_FIELD_NAME` | Set vector field name such as `bedrock-knowledge-base-default-vector` | String    |
+| `VECTOR_DIMENSION`  | k-NN vector dimension; must match the embedding model's output vector size (e.g. `1024` for `amazon.titan-embed-text-v2:0`) | String |
 | `REGION_NAME`       | Sets the AWS region                                                   | String    |

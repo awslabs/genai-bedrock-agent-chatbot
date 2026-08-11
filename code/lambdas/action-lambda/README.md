@@ -15,12 +15,16 @@ Here is the API schema for this lambda:
 
 #### Prerequisites (requirements.txt)
 
-- boto3==1.36.1
-- llama-index==0.13.0
-- llama-index-embeddings-bedrock==0.7.0
+- llama-index==0.14.15
+- llama-index-embeddings-bedrock==0.7.3
 - llama-index-llms-bedrock==0.4.2
-- sqlalchemy==2.0.41
-- PyAthena[SQLAlchemy]
+- sqlalchemy==2.0.47
+- PyAthena==3.29.3
+
+`boto3` is provided by the Lambda Python runtime and is not pinned here.
+
+Embeddings and LLM inference are both served by the Amazon Bedrock API, so no
+local model runtime (for example `torch`) is installed in the image.
 
 #### Technology stack
 
