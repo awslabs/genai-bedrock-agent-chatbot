@@ -47,10 +47,12 @@ LlamaIndex is used for data processing and text-to-SQL retrieval. The solution i
 - An active AWS account
 - An AWS account bootstrapped by using AWS CDK in `us-east-1` or `us-west-2`
 - Enable the following model access in Amazon Bedrock:
-  - **Claude Sonnet 4.6** (Agent foundation model and text-to-SQL)
+  - **Claude Opus 4.8** (Agent foundation model and text-to-SQL)
+  - **Claude Fable 5** (available as alternative; also requires setting the account's data retention mode to `provider_data_share` via the Data Retention API)
+  - **Claude Sonnet 4.6** (available as alternative)
   - **Claude Sonnet 4.5** (available as alternative)
   - **Claude Haiku 4.5** (available as alternative)
-  - **Titan Embedding Text v1** (KnowledgeBase embeddings)
+  - **Titan Text Embeddings V2** (KnowledgeBase embeddings)
 
 ## Target technology stack
 
@@ -165,17 +167,36 @@ The application uses the following Amazon Bedrock models:
 
 | Component                   | Model                   | Model ID / Inference Profile     |
 | --------------------------- | ----------------------- | -------------------------------- |
-| Bedrock Agent               | Claude Sonnet 4.6       | `us.anthropic.claude-sonnet-4-6` |
-| Text-to-SQL (Action Lambda) | Claude Sonnet 4.6       | `us.anthropic.claude-sonnet-4-6` |
-| KnowledgeBase Embeddings    | Titan Embedding Text v1 | `amazon.titan-embed-text-v1`     |
+| Bedrock Agent               | Claude Opus 4.8         | `us.anthropic.claude-opus-4-8`   |
+| Text-to-SQL (Action Lambda) | Claude Opus 4.8         | `us.anthropic.claude-opus-4-8`   |
+| KnowledgeBase Embeddings    | Titan Text Embeddings V2 | `amazon.titan-embed-text-v2:0`  |
 
-Claude Sonnet 4.5 and 4.6 are cross-region inference only — they require inference profile IDs (prefixed with `us.`) rather than raw model IDs.
+Claude Opus 4.8, Fable 5, Sonnet 4.5 and 4.6 are cross-region inference only — they require inference profile IDs (prefixed with `us.`) rather than raw model IDs.
+
+Claude Opus 4.8 notes:
+
+- **1M token context window**, 128K max output tokens.
+- **`temperature` must be 1.0 or unset.** Passing `temperature=0` is rejected with "`temperature` is deprecated for this model". Since llama-index's Bedrock class requires the field, `connections.py` pins it to 1.0 for this model while older models keep `temperature=0`.
+- No data retention opt-in required (unlike Claude Fable 5, which requires `provider_data_share`).
 
 Available model alternatives in `code/lambdas/action-lambda/connections.py`:
 
-- `Sonnet46` — Claude Sonnet 4.6 (default)
+- `Opus48` — Claude Opus 4.8 (default, 1M context)
+- `Fable5` — Claude Fable 5 (1M context; **requires** account data retention set to `provider_data_share`)
+- `Sonnet46` — Claude Sonnet 4.6
 - `Sonnet45` — Claude Sonnet 4.5
 - `Haiku45` — Claude Haiku 4.5
+
+### Changing the embedding model
+
+The embedding model and its vector dimension are both set in `cdk.json` under `context/config/models`:
+
+```json
+"bedrock_embedding_model": "amazon.titan-embed-text-v2:0",
+"bedrock_embedding_dimension": 1024
+```
+
+They must stay consistent — the OpenSearch k-NN index dimension has to match the embedding model's output vector size (Titan V2 emits 1024 by default; Titan G1 emitted 1536). Changing them triggers the create-index custom resource, which detects the dimension change and recreates the index. Because a KnowledgeBase's embedding model is immutable, changing the model also replaces the KnowledgeBase and requires re-ingesting the data source.
 
 ## Customize the chatbot with your own data
 

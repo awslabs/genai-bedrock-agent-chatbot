@@ -34,6 +34,8 @@ from bedrock_agent import (
     DataSource,
     DataSourceConfiguration,
     S3Configuration,
+    KnowledgeBaseConfiguration,
+    VectorKnowledgeBaseConfiguration,
 )
 
 
@@ -108,6 +110,13 @@ class CodeStack(Stack):
         ]
 
         self.BEDROCK_AGENT_FM = config["models"]["bedrock_agent_foundation_model"]
+        # Embedding model and its output vector size travel together: the
+        # OpenSearch k-NN index dimension must match the model's output size, or
+        # KnowledgeBase ingestion fails. Keep both in cdk.json so they cannot drift.
+        self.BEDROCK_EMBEDDING_MODEL = config["models"]["bedrock_embedding_model"]
+        self.BEDROCK_EMBEDDING_DIMENSION = config["models"][
+            "bedrock_embedding_dimension"
+        ]
 
         self.AGENT_INSTRUCTION = config["bedrock_instructions"]["agent_instruction"]
         self.ACTION_GROUP_DESCRIPTION = config["bedrock_instructions"][
@@ -430,12 +439,16 @@ class CodeStack(Stack):
                     "bedrock:GetFoundationModel",
                 ],
                 resources=[
+                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-opus-4-8",
+                    f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-fable-5",
                     f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-sonnet-4-6",
                     f"arn:aws:bedrock:{Aws.REGION}:{Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-opus-4-8",
+                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-fable-5",
                     "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6",
                     "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/amazon.titan-embed-text-v1",
+                    f"arn:aws:bedrock:{Aws.REGION}::foundation-model/{self.BEDROCK_EMBEDDING_MODEL}",
                 ],
             ),
             iam.PolicyStatement(
@@ -634,6 +647,7 @@ class CodeStack(Stack):
                 "COLLECTION_HOST": cfn_collection.attr_collection_endpoint,
                 "VECTOR_INDEX_NAME": vector_index_name,
                 "VECTOR_FIELD_NAME": vector_field_name,
+                "VECTOR_DIMENSION": str(self.BEDROCK_EMBEDDING_DIMENSION),
             },
             role=create_index_lambda_execution_role,
             timeout=Duration.minutes(15),
@@ -650,6 +664,15 @@ class CodeStack(Stack):
             self,
             "LambdaCreateIndexCustomResource",
             service_token=lambda_provider.service_token,
+            # CloudFormation only invokes a custom resource on update when its
+            # properties change. Without these, changing the embedding model (and
+            # therefore the vector dimension) would leave the existing index at
+            # the old dimension and silently break KnowledgeBase ingestion.
+            properties={
+                "VectorIndexName": vector_index_name,
+                "VectorFieldName": vector_field_name,
+                "VectorDimension": str(self.BEDROCK_EMBEDDING_DIMENSION),
+            },
         )
 
         return cfn_collection, vector_field_name, vector_index_name, lambda_cr
@@ -685,6 +708,18 @@ class CodeStack(Stack):
             name=kb_name,
             description="Use this for returning descriptive answers and instructions directly from AWS EC2 Documentation. Use to answer qualitative/guidance questions such as 'how do I',  general instructions and guidelines.",
             role_arn=agent_resource_role_arn,
+            # The construct defaults to amazon.titan-embed-text-v1 (1536 dims), so
+            # the embedding model must be set explicitly. The matching vector
+            # dimension is set from the same cdk.json config in
+            # create_opensearch_index. A KnowledgeBase's embedding model is
+            # immutable, so changing it replaces the KB and requires re-ingesting
+            # the data source.
+            knowledge_base_configuration=KnowledgeBaseConfiguration(
+                type="VECTOR",
+                vector_knowledge_base_configuration=VectorKnowledgeBaseConfiguration(
+                    embedding_model_arn=f"arn:aws:bedrock:{Aws.REGION}::foundation-model/{self.BEDROCK_EMBEDDING_MODEL}",
+                ),
+            ),
             storage_configuration=OpenSearchServerlessStorageConfiguration(
                 opensearch_serverless_configuration=OpenSearchServerlessConfiguration(
                     collection_arn=cfn_collection.attr_arn,

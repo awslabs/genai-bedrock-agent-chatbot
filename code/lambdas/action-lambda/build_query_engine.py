@@ -58,7 +58,7 @@ def get_few_shot_retriever(FEWSHOT_EXAMPLES_PATH):
             )
 
     embed_model = BedrockEmbedding(
-        client=Connections.bedrock_client, model_name="amazon.titan-embed-text-v1"
+        client=Connections.bedrock_client, model_name="amazon.titan-embed-text-v2:0"
     )
 
     # Update settings instead of using ServiceContext
@@ -132,7 +132,7 @@ def create_query_engine(
 
     # Set up embeddings and LLM
     embed_model = BedrockEmbedding(
-        client=Connections.bedrock_client, model_name="amazon.titan-embed-text-v1"
+        client=Connections.bedrock_client, model_name="amazon.titan-embed-text-v2:0"
     )
     
     # initialize llm
