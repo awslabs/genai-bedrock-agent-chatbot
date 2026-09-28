@@ -1,4 +1,4 @@
-llama-index==0.14.15
+llama-index==0.14.25
 llama-index-embeddings-bedrock==0.7.3
 llama-index-llms-bedrock==0.4.2
 sqlalchemy==2.0.47
