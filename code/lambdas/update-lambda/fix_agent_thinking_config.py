@@ -25,7 +25,8 @@ def requires_adaptive_thinking(foundation_model):
     True when the agent's foundation model rejects the legacy
     "thinking.type.enabled" reasoning configuration.
     """
-    return any(m in foundation_model for m in ADAPTIVE_THINKING_MODELS)
+    model = foundation_model or ""
+    return any(m in model for m in ADAPTIVE_THINKING_MODELS)
 
 
 def fix_agent_thinking_config(bedrock_agent, agent_id):
