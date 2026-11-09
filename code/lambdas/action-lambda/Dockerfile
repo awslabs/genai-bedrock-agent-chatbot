@@ -1,6 +1,6 @@
 # Base image pinned by multi-arch index digest for reproducible, tamper-evident builds.
 # Dependabot (docker ecosystem) keeps this digest current -- see .github/dependabot.yml.
-FROM public.ecr.aws/lambda/python:3.13@sha256:4c8317b32edb58a427eea4ff829d42b27075633f0ae346ac06cf4d4cd82be9d3
+FROM public.ecr.aws/lambda/python:3.15@sha256:fb2b0ee9404b4f66f7d0d02c9851cc10a5e335a0d4e8613454e974f8f0381eea
 
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/
 
